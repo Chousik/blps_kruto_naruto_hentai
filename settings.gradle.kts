@@ -1,1 +1,1 @@
-rootProject.name = "kt_blps"
+rootProject.name = "blps_kt_2"

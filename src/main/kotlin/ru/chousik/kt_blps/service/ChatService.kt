@@ -2,75 +2,66 @@ package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.kt_blps.api.chat.CreateChatRequest
+import ru.chousik.kt_blps.dto.chat.CreateChatRequest
 import ru.chousik.kt_blps.model.Chat
 import ru.chousik.kt_blps.model.User
 import ru.chousik.kt_blps.model.UserRole
 import ru.chousik.kt_blps.pagination.OffsetBasedPageRequest
 import ru.chousik.kt_blps.repository.ChatRepository
 import ru.chousik.kt_blps.repository.UserRepository
-import ru.chousik.kt_blps.security.CurrentAccountService
 
 @Service
 class ChatService(
     private val chatRepository: ChatRepository,
     private val userRepository: UserRepository,
-    private val chatSystemMessageService: ChatSystemMessageService,
-    private val currentAccountService: CurrentAccountService,
-    @Qualifier("jtaTransactionTemplate")
-    private val transactionTemplate: TransactionTemplate
+    private val chatSystemMessageService: ChatSystemMessageService
 ) {
 
-    fun createChat(request: CreateChatRequest): Chat {
-        val requesterId = currentAccountService.currentAccount().userId
-        val createdChat = transactionTemplate.execute {
-            val guest = loadUser(request.guestUserId!!)
-            val host = loadUser(request.hostUserId!!)
-            val initiator = loadUser(requesterId)
+    @Transactional
+    fun createChat(requesterId: UUID, request: CreateChatRequest): Chat {
+        val guest = loadUser(request.guestUserId!!)
+        val host = loadUser(request.hostUserId!!)
+        val initiator = loadUser(requesterId)
 
-            if (guest.id == host.id) {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, "guest and host must be different users")
-            }
-
-            requireRole(guest, UserRole.GUEST, "guest must have GUEST role")
-            requireRole(host, UserRole.HOST, "host must have HOST role")
-
-            if (!canInitiateChat(initiator, guest, host)) {
-                throw ResponseStatusException(HttpStatus.FORBIDDEN, "initiator must be guest, host, or admin user")
-            }
-
-            if (chatRepository.existsByGuestIdAndHostId(guest.id, host.id)) {
-                throw ResponseStatusException(HttpStatus.CONFLICT, "chat between guest and host already exists")
-            }
-
-            val now = OffsetDateTime.now()
-            val chat = Chat().apply {
-                id = UUID.randomUUID()
-                this.guest = guest
-                this.host = host
-                createdAt = now
-                updatedAt = now
-            }
-            val savedChat = chatRepository.save(chat)
-            chatSystemMessageService.append(
-                chat = savedChat,
-                message = "Chat has been created for guest ${guest.username} and host ${host.username}."
-            )
-            savedChat
+        if (guest.id == host.id) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "guest and host must be different users")
         }
-        return requireNotNull(createdChat) { "chat creation transaction returned null result" }
+
+        requireRole(guest, UserRole.GUEST, "guest must have GUEST role")
+        requireRole(host, UserRole.HOST, "host must have HOST role")
+
+        if (!canInitiateChat(initiator, guest, host)) {
+            throw ResponseStatusException(HttpStatus.FORBIDDEN, "initiator must be guest, host, or admin user")
+        }
+
+        if (chatRepository.existsByGuestIdAndHostId(guest.id, host.id)) {
+            throw ResponseStatusException(HttpStatus.CONFLICT, "chat between guest and host already exists")
+        }
+
+        val now = OffsetDateTime.now()
+        val chat = Chat().apply {
+            id = UUID.randomUUID()
+            this.guest = guest
+            this.host = host
+            createdAt = now
+            updatedAt = now
+        }
+        val savedChat = chatRepository.save(chat)
+        chatSystemMessageService.append(
+            chat = savedChat,
+            message = "Chat has been created for guest ${guest.username} and host ${host.username}."
+        )
+        return savedChat
     }
 
-    fun getChatForUser(chatId: UUID): Chat {
-        val requesterId = currentAccountService.currentAccount().userId
+    @Transactional(readOnly = true)
+    fun getChatForUser(chatId: UUID, requesterId: UUID): Chat {
         val chat = chatRepository.findById(chatId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "chat not found") }
         val requester = loadUser(requesterId)
@@ -83,8 +74,7 @@ class ChatService(
     }
 
     @Transactional(readOnly = true)
-    fun getChatsForUser(userId: UUID?, limit: Int, offset: Long): Page<Chat> {
-        val requesterId = currentAccountService.currentAccount().userId
+    fun getChatsForUser(requesterId: UUID, userId: UUID?, limit: Int, offset: Long): Page<Chat> {
         val requester = loadUser(requesterId)
         val targetUser = loadUser(userId ?: requesterId)
 
@@ -106,19 +96,17 @@ class ChatService(
         }
     }
 
-    private fun canInitiateChat(initiator: User, guest: User, host: User): Boolean {
-        return when (initiator.role) {
+    private fun canInitiateChat(initiator: User, guest: User, host: User): Boolean =
+        when (initiator.role) {
             UserRole.GUEST -> initiator.id == guest.id
             UserRole.HOST -> initiator.id == host.id
             UserRole.ADMIN -> true
         }
-    }
 
-    private fun canAccessChat(chat: Chat, requester: User): Boolean {
-        return when (requester.role) {
+    private fun canAccessChat(chat: Chat, requester: User): Boolean =
+        when (requester.role) {
             UserRole.GUEST -> requester.id == chat.guest.id
             UserRole.HOST -> requester.id == chat.host.id
             UserRole.ADMIN -> true
         }
-    }
 }

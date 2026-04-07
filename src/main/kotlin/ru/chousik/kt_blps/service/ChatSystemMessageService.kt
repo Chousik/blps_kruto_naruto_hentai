@@ -9,8 +9,7 @@ import ru.chousik.kt_blps.repository.ChatMessageRepository
 
 @Service
 class ChatSystemMessageService(
-    private val chatMessageRepository: ChatMessageRepository,
-    private val chatMessageOutboxService: ChatMessageOutboxService
+    private val chatMessageRepository: ChatMessageRepository
 ) {
 
     fun append(chat: Chat, message: String) {
@@ -21,7 +20,6 @@ class ChatSystemMessageService(
             this.message = message
             createdAt = OffsetDateTime.now()
         }
-        val saved = chatMessageRepository.save(entity)
-        chatMessageOutboxService.enqueue(saved)
+        chatMessageRepository.save(entity)
     }
 }

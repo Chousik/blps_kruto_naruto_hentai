@@ -1,3 +1,22 @@
 spring:
   application:
-    name: blps_kt_2
+    name: blps_kt
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/blps}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+      show-sql: false
+      open-in-view: false
+      properties:
+        hibernate:
+          jdbc:
+            lob:
+              non_contextual_creation: true
+          format_sql: true
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+server:
+  port: 8433
