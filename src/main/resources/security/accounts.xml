@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<accounts>
+    <account username="guest-alex" password-hash="$2y$10$8xbHDMYmisik70DQ/X4Gy.gKZESN3Z/OKpey1rSkmPSC0y82edW9e" role="GUEST" user-id="11111111-1111-4111-8111-111111111111" />
+    <account username="guest-vika" password-hash="$2y$10$jN.wdTU.roZM9h.BYBCzsuivVAg8efnKKElsae4UjP.9H3jBHc9W2" role="GUEST" user-id="22222222-2222-4222-8222-222222222222" />
+    <account username="host-dmitry" password-hash="$2y$10$XXmxzcukcMDH9Ym3Hr.4HeafeUxrRsE9cWHtU98r.Xp0Uk1tdO262" role="HOST" user-id="33333333-3333-4333-8333-333333333333" />
+    <account username="host-elena" password-hash="$2y$10$AOVbKghwZhIEpXgFSP6fIeLu5NYl4FY.HFfLNJg1tW/VAedrxfnj2" role="HOST" user-id="44444444-4444-4444-8444-444444444444" />
+    <account username="ops-olga" password-hash="$2y$10$R6dIdw6FVdVfONTlRdlED.xO/1bHMLJz0pxN7IhfdEpZ8WAtHbsUe" role="ADMIN" user-id="55555555-5555-4555-8555-555555555555" />
+</accounts>

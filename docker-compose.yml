@@ -1,0 +1,37 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: postgres
+      DATABASE_URL: jdbc:postgresql://postgres:5432/blps
+      DATABASE_USERNAME: blps
+      DATABASE_PASSWORD: blps
+    ports:
+      - "8433:8433"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: blps-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: blps
+      POSTGRES_USER: blps
+      POSTGRES_PASSWORD: blps
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "blps"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
+    driver: local
