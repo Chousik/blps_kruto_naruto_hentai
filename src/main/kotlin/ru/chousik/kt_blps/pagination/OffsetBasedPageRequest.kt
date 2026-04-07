@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.pagination
+package ru.chousik.kt_blps.pagination
 
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort

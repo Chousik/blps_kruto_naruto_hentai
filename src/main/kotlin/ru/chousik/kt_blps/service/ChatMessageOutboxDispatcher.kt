@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import com.fasterxml.jackson.databind.json.JsonMapper
 import java.time.OffsetDateTime
@@ -8,9 +8,9 @@ import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
-import ru.chousik.blps_kt.api.chat.ChatMessageResponse
-import ru.chousik.blps_kt.model.ChatMessageOutboxStatus
-import ru.chousik.blps_kt.repository.ChatMessageOutboxRepository
+import ru.chousik.kt_blps.api.chat.ChatMessageResponse
+import ru.chousik.kt_blps.model.ChatMessageOutboxStatus
+import ru.chousik.kt_blps.repository.ChatMessageOutboxRepository
 
 @Service
 class ChatMessageOutboxDispatcher(

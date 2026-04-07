@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -8,13 +8,13 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.api.security.RegisterAccountRequest
-import ru.chousik.blps_kt.api.security.RegisteredAccountResponse
-import ru.chousik.blps_kt.model.User
-import ru.chousik.blps_kt.model.UserRole
-import ru.chousik.blps_kt.repository.UserRepository
-import ru.chousik.blps_kt.security.XmlAccountDefinition
-import ru.chousik.blps_kt.security.XmlAccountRegistry
+import ru.chousik.kt_blps.api.security.RegisterAccountRequest
+import ru.chousik.kt_blps.api.security.RegisteredAccountResponse
+import ru.chousik.kt_blps.model.User
+import ru.chousik.kt_blps.model.UserRole
+import ru.chousik.kt_blps.repository.UserRepository
+import ru.chousik.kt_blps.security.XmlAccountDefinition
+import ru.chousik.kt_blps.security.XmlAccountRegistry
 
 @Service
 class AccountRegistrationService(

@@ -1,8 +1,8 @@
-package ru.chousik.blps_kt.repository
+package ru.chousik.kt_blps.repository
 
 import java.util.UUID
 import org.springframework.data.jpa.repository.JpaRepository
-import ru.chousik.blps_kt.model.User
+import ru.chousik.kt_blps.model.User
 
 interface UserRepository : JpaRepository<User, UUID> {
     fun existsByUsername(username: String): Boolean

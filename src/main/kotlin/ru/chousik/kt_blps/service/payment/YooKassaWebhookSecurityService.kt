@@ -1,11 +1,11 @@
-package ru.chousik.blps_kt.service.payment
+package ru.chousik.kt_blps.service.payment
 
 import java.math.BigInteger
 import java.net.InetAddress
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.config.YooKassaProperties
+import ru.chousik.kt_blps.config.YooKassaProperties
 
 @Service
 class YooKassaWebhookSecurityService(

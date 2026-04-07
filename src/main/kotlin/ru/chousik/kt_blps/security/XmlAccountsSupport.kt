@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import java.io.FileInputStream
 import java.io.InputStream
@@ -15,7 +15,7 @@ import javax.xml.transform.stream.StreamResult
 import org.w3c.dom.Element
 import kotlin.concurrent.withLock
 import java.util.concurrent.locks.ReentrantLock
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.UserRole
 
 object XmlAccountsSupport {
     private val writeLock = ReentrantLock()

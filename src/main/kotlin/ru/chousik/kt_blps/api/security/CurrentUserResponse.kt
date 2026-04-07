@@ -1,8 +1,8 @@
-package ru.chousik.blps_kt.api.security
+package ru.chousik.kt_blps.api.security
 
 import java.util.UUID
-import ru.chousik.blps_kt.model.UserRole
-import ru.chousik.blps_kt.security.AuthenticatedAccount
+import ru.chousik.kt_blps.model.UserRole
+import ru.chousik.kt_blps.security.AuthenticatedAccount
 
 data class CurrentUserResponse(
     val username: String,

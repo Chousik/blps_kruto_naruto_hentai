@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -12,28 +12,28 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestCreateDTO
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestResponseDTO
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestUpdateDTO
-import ru.chousik.blps_kt.api.payment.ExtraServiceDecision
-import ru.chousik.blps_kt.api.payment.ExtraServiceDecisionRequest
-import ru.chousik.blps_kt.api.payment.ExtraServiceDecisionResponse
-import ru.chousik.blps_kt.api.payment.PaymentRequestView
-import ru.chousik.blps_kt.model.Chat
-import ru.chousik.blps_kt.model.ExtraServiceRequest
-import ru.chousik.blps_kt.model.ExtraServiceRequestStatus
-import ru.chousik.blps_kt.model.PaymentRequest
-import ru.chousik.blps_kt.model.PaymentRequestStatus
-import ru.chousik.blps_kt.model.User
-import ru.chousik.blps_kt.model.UserRole
-import ru.chousik.blps_kt.pagination.OffsetBasedPageRequest
-import ru.chousik.blps_kt.repository.ChatRepository
-import ru.chousik.blps_kt.repository.ExtraServiceRequestRepository
-import ru.chousik.blps_kt.repository.PaymentRequestRepository
-import ru.chousik.blps_kt.repository.UserRepository
-import ru.chousik.blps_kt.security.CurrentAccountService
-import ru.chousik.blps_kt.service.payment.YooKassaClient
-import ru.chousik.blps_kt.service.payment.YooKassaCreatePaymentResult
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestCreateDTO
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestResponseDTO
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestUpdateDTO
+import ru.chousik.kt_blps.api.payment.ExtraServiceDecision
+import ru.chousik.kt_blps.api.payment.ExtraServiceDecisionRequest
+import ru.chousik.kt_blps.api.payment.ExtraServiceDecisionResponse
+import ru.chousik.kt_blps.api.payment.PaymentRequestView
+import ru.chousik.kt_blps.model.Chat
+import ru.chousik.kt_blps.model.ExtraServiceRequest
+import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
+import ru.chousik.kt_blps.model.PaymentRequest
+import ru.chousik.kt_blps.model.PaymentRequestStatus
+import ru.chousik.kt_blps.model.User
+import ru.chousik.kt_blps.model.UserRole
+import ru.chousik.kt_blps.pagination.OffsetBasedPageRequest
+import ru.chousik.kt_blps.repository.ChatRepository
+import ru.chousik.kt_blps.repository.ExtraServiceRequestRepository
+import ru.chousik.kt_blps.repository.PaymentRequestRepository
+import ru.chousik.kt_blps.repository.UserRepository
+import ru.chousik.kt_blps.security.CurrentAccountService
+import ru.chousik.kt_blps.service.payment.YooKassaClient
+import ru.chousik.kt_blps.service.payment.YooKassaCreatePaymentResult
 
 @Service
 class ExtraServiceRequestService(

@@ -1,7 +1,7 @@
-package ru.chousik.blps_kt.api.security
+package ru.chousik.kt_blps.api.security
 
 import java.util.UUID
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.UserRole
 
 data class RegisteredAccountResponse(
     val userId: UUID,

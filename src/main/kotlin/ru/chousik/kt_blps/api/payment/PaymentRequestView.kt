@@ -1,9 +1,9 @@
-package ru.chousik.blps_kt.api.payment
+package ru.chousik.kt_blps.api.payment
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import ru.chousik.blps_kt.model.PaymentRequest
-import ru.chousik.blps_kt.model.PaymentRequestStatus
+import ru.chousik.kt_blps.model.PaymentRequest
+import ru.chousik.kt_blps.model.PaymentRequestStatus
 
 data class PaymentRequestView(
     val id: UUID,

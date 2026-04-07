@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
@@ -17,14 +17,14 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import ru.chousik.blps_kt.api.payment.ExtraServiceDecisionRequest
-import ru.chousik.blps_kt.api.payment.ExtraServiceDecisionResponse
-import ru.chousik.blps_kt.api.payment.PaymentRequestView
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestCreateDTO
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestResponseDTO
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestUpdateDTO
-import ru.chousik.blps_kt.api.extraservice.PagedExtraServiceRequestsResponse
-import ru.chousik.blps_kt.service.ExtraServiceRequestService
+import ru.chousik.kt_blps.api.payment.ExtraServiceDecisionRequest
+import ru.chousik.kt_blps.api.payment.ExtraServiceDecisionResponse
+import ru.chousik.kt_blps.api.payment.PaymentRequestView
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestCreateDTO
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestResponseDTO
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestUpdateDTO
+import ru.chousik.kt_blps.api.extraservice.PagedExtraServiceRequestsResponse
+import ru.chousik.kt_blps.service.ExtraServiceRequestService
 
 @RestController
 @Validated

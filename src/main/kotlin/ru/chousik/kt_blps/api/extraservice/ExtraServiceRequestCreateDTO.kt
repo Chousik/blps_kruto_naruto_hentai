@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.api.extraservice
+package ru.chousik.kt_blps.api.extraservice
 
 import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.NotBlank

@@ -1,11 +1,11 @@
-package ru.chousik.blps_kt.api.security
+package ru.chousik.kt_blps.api.security
 
 import jakarta.validation.constraints.Email
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.NotNull
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Size
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.UserRole
 
 data class RegisterAccountRequest(
     @field:NotBlank

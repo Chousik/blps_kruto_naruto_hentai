@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.model
+package ru.chousik.kt_blps.model
 
 enum class ChatMessageOutboxStatus {
     PENDING,

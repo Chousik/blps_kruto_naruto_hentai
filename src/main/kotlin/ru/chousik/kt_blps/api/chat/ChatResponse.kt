@@ -1,8 +1,8 @@
-package ru.chousik.blps_kt.api.chat
+package ru.chousik.kt_blps.api.chat
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import ru.chousik.blps_kt.model.Chat
+import ru.chousik.kt_blps.model.Chat
 
 data class ChatResponse(
     val id: UUID,

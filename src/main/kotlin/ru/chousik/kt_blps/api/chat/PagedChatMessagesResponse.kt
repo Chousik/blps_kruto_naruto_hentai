@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.api.chat
+package ru.chousik.kt_blps.api.chat
 
 data class PagedChatMessagesResponse(
     val items: List<ChatMessageResponse>,

@@ -1,11 +1,11 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
-import ru.chousik.blps_kt.api.security.CurrentUserResponse
-import ru.chousik.blps_kt.security.CurrentAccountService
+import ru.chousik.kt_blps.api.security.CurrentUserResponse
+import ru.chousik.kt_blps.security.CurrentAccountService
 
 @RestController
 @RequestMapping

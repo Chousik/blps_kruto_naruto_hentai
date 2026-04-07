@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.config
+package ru.chousik.kt_blps.config
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 

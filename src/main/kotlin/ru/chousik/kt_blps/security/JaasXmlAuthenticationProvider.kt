@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import jakarta.annotation.PostConstruct
 import javax.security.auth.login.AppConfigurationEntry

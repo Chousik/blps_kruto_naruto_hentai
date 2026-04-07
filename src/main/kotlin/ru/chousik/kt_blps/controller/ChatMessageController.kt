@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
@@ -13,10 +13,10 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
-import ru.chousik.blps_kt.api.chat.ChatMessageResponse
-import ru.chousik.blps_kt.api.chat.CreateChatMessageRequest
-import ru.chousik.blps_kt.api.chat.PagedChatMessagesResponse
-import ru.chousik.blps_kt.service.ChatMessageService
+import ru.chousik.kt_blps.api.chat.ChatMessageResponse
+import ru.chousik.kt_blps.api.chat.CreateChatMessageRequest
+import ru.chousik.kt_blps.api.chat.PagedChatMessagesResponse
+import ru.chousik.kt_blps.service.ChatMessageService
 
 @RestController
 @Validated

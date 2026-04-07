@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import javax.security.auth.callback.Callback
 import javax.security.auth.callback.CallbackHandler

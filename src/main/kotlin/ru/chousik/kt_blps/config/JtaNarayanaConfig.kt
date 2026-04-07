@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.config
+package ru.chousik.kt_blps.config
 
 import com.arjuna.ats.jta.TransactionManager
 import com.arjuna.ats.jta.UserTransaction

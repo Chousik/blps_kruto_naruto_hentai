@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

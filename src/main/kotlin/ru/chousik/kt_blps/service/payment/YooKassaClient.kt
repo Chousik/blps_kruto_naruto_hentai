@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service.payment
+package ru.chousik.kt_blps.service.payment
 
 import java.math.BigDecimal
 import java.time.OffsetDateTime
@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.config.YooKassaProperties
+import ru.chousik.kt_blps.config.YooKassaProperties
 
 @Component
 class YooKassaClient(

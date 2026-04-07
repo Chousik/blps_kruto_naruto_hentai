@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.config
+package ru.chousik.kt_blps.config
 
 import java.security.Principal
 import org.springframework.http.server.ServletServerHttpRequest

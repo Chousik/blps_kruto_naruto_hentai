@@ -1,6 +1,6 @@
-package ru.chousik.blps_kt.api.payment
+package ru.chousik.kt_blps.api.payment
 
-import ru.chousik.blps_kt.api.extraservice.ExtraServiceRequestResponseDTO
+import ru.chousik.kt_blps.api.extraservice.ExtraServiceRequestResponseDTO
 
 data class ExtraServiceDecisionResponse(
     val extraService: ExtraServiceRequestResponseDTO,

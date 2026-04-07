@@ -1,11 +1,11 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
-import ru.chousik.blps_kt.model.Chat
-import ru.chousik.blps_kt.model.ChatMessage
-import ru.chousik.blps_kt.repository.ChatMessageRepository
+import ru.chousik.kt_blps.model.Chat
+import ru.chousik.kt_blps.model.ChatMessage
+import ru.chousik.kt_blps.repository.ChatMessageRepository
 
 @Service
 class ChatSystemMessageService(

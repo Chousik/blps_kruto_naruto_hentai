@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.config
+package ru.chousik.kt_blps.config
 
 import io.swagger.v3.oas.models.OpenAPI
 import io.swagger.v3.oas.models.servers.Server

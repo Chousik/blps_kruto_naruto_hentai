@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus

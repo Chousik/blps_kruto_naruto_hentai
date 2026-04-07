@@ -1,11 +1,11 @@
-package ru.chousik.blps_kt.api.extraservice
+package ru.chousik.kt_blps.api.extraservice
 
 import jakarta.validation.constraints.Digits
 import jakarta.validation.constraints.Pattern
 import jakarta.validation.constraints.Positive
 import jakarta.validation.constraints.Size
 import java.math.BigDecimal
-import ru.chousik.blps_kt.model.ExtraServiceRequestStatus
+import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
 
 /**
  * DTO for partial updates of an extra service request.

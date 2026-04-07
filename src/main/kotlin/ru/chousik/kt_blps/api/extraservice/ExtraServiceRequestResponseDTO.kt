@@ -1,10 +1,10 @@
-package ru.chousik.blps_kt.api.extraservice
+package ru.chousik.kt_blps.api.extraservice
 
 import java.math.BigDecimal
 import java.time.OffsetDateTime
 import java.util.UUID
-import ru.chousik.blps_kt.model.ExtraServiceRequest
-import ru.chousik.blps_kt.model.ExtraServiceRequestStatus
+import ru.chousik.kt_blps.model.ExtraServiceRequest
+import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
 
 data class ExtraServiceRequestResponseDTO(
     val id: UUID,

@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.api.chat
+package ru.chousik.kt_blps.api.chat
 
 import jakarta.validation.constraints.NotBlank
 import jakarta.validation.constraints.Size

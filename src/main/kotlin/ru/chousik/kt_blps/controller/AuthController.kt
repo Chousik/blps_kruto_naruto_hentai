@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
-import ru.chousik.blps_kt.api.security.CurrentUserResponse
-import ru.chousik.blps_kt.api.security.RegisterAccountRequest
-import ru.chousik.blps_kt.api.security.RegisteredAccountResponse
-import ru.chousik.blps_kt.security.CurrentAccountService
-import ru.chousik.blps_kt.service.AccountRegistrationService
+import ru.chousik.kt_blps.api.security.CurrentUserResponse
+import ru.chousik.kt_blps.api.security.RegisterAccountRequest
+import ru.chousik.kt_blps.api.security.RegisteredAccountResponse
+import ru.chousik.kt_blps.security.CurrentAccountService
+import ru.chousik.kt_blps.service.AccountRegistrationService
 
 @RestController
 @RequestMapping("/auth")

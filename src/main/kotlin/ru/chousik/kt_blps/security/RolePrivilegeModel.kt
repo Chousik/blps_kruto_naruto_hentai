@@ -1,9 +1,9 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.stereotype.Component
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.UserRole
 
 @Component
 class RolePrivilegeModel {

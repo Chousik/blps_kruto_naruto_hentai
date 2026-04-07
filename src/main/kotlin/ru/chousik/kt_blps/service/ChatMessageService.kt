@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
@@ -9,17 +9,17 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.api.chat.ChatMessageResponse
-import ru.chousik.blps_kt.api.chat.CreateChatMessageRequest
-import ru.chousik.blps_kt.model.Chat
-import ru.chousik.blps_kt.model.ChatMessage
-import ru.chousik.blps_kt.model.User
-import ru.chousik.blps_kt.model.UserRole
-import ru.chousik.blps_kt.pagination.OffsetBasedPageRequest
-import ru.chousik.blps_kt.repository.ChatMessageRepository
-import ru.chousik.blps_kt.repository.ChatRepository
-import ru.chousik.blps_kt.repository.UserRepository
-import ru.chousik.blps_kt.security.CurrentAccountService
+import ru.chousik.kt_blps.api.chat.ChatMessageResponse
+import ru.chousik.kt_blps.api.chat.CreateChatMessageRequest
+import ru.chousik.kt_blps.model.Chat
+import ru.chousik.kt_blps.model.ChatMessage
+import ru.chousik.kt_blps.model.User
+import ru.chousik.kt_blps.model.UserRole
+import ru.chousik.kt_blps.pagination.OffsetBasedPageRequest
+import ru.chousik.kt_blps.repository.ChatMessageRepository
+import ru.chousik.kt_blps.repository.ChatRepository
+import ru.chousik.kt_blps.repository.UserRepository
+import ru.chousik.kt_blps.security.CurrentAccountService
 
 @Service
 class ChatMessageService(

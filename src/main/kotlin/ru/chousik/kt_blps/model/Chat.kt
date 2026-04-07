@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.model
+package ru.chousik.kt_blps.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity

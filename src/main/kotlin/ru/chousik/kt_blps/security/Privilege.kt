@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 enum class Privilege {
     PRIV_CURRENT_USER_READ,

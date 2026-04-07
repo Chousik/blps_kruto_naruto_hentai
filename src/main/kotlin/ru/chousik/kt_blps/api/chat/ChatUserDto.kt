@@ -1,8 +1,8 @@
-package ru.chousik.blps_kt.api.chat
+package ru.chousik.kt_blps.api.chat
 
 import java.util.UUID
-import ru.chousik.blps_kt.model.User
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.User
+import ru.chousik.kt_blps.model.UserRole
 
 data class ChatUserDto(
     val id: UUID,

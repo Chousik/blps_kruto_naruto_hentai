@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import jakarta.validation.Valid
 import java.security.Principal
@@ -8,9 +8,9 @@ import org.springframework.messaging.handler.annotation.MessageMapping
 import org.springframework.messaging.handler.annotation.Payload
 import org.springframework.stereotype.Controller
 import org.springframework.validation.annotation.Validated
-import ru.chousik.blps_kt.api.chat.CreateChatMessageRequest
-import ru.chousik.blps_kt.security.CurrentAccountService
-import ru.chousik.blps_kt.service.ChatMessageService
+import ru.chousik.kt_blps.api.chat.CreateChatMessageRequest
+import ru.chousik.kt_blps.security.CurrentAccountService
+import ru.chousik.kt_blps.service.ChatMessageService
 
 @Controller
 @Validated

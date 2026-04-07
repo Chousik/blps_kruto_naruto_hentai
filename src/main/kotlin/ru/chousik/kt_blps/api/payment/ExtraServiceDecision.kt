@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.api.payment
+package ru.chousik.kt_blps.api.payment
 
 enum class ExtraServiceDecision {
     ACCEPT,

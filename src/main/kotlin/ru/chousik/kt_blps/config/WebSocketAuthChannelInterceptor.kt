@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.config
+package ru.chousik.kt_blps.config
 
 import java.util.UUID
 import org.springframework.messaging.Message
@@ -8,9 +8,9 @@ import org.springframework.messaging.simp.stomp.StompCommand
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor
 import org.springframework.messaging.support.ChannelInterceptor
 import org.springframework.stereotype.Component
-import ru.chousik.blps_kt.security.CurrentAccountService
-import ru.chousik.blps_kt.security.Privilege
-import ru.chousik.blps_kt.service.ChatMessageService
+import ru.chousik.kt_blps.security.CurrentAccountService
+import ru.chousik.kt_blps.security.Privilege
+import ru.chousik.kt_blps.service.ChatMessageService
 
 @Component
 class WebSocketAuthChannelInterceptor(

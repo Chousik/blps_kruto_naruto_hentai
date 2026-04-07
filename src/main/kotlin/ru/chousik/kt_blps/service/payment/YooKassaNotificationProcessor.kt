@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.service.payment
+package ru.chousik.kt_blps.service.payment
 
 import com.fasterxml.jackson.databind.JsonNode
 import java.time.OffsetDateTime
@@ -7,11 +7,11 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.model.ExtraServiceRequestStatus
-import ru.chousik.blps_kt.model.PaymentRequestStatus
-import ru.chousik.blps_kt.repository.ExtraServiceRequestRepository
-import ru.chousik.blps_kt.repository.PaymentRequestRepository
-import ru.chousik.blps_kt.service.ChatSystemMessageService
+import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
+import ru.chousik.kt_blps.model.PaymentRequestStatus
+import ru.chousik.kt_blps.repository.ExtraServiceRequestRepository
+import ru.chousik.kt_blps.repository.PaymentRequestRepository
+import ru.chousik.kt_blps.service.ChatSystemMessageService
 
 @Service
 class YooKassaNotificationProcessor(
@@ -111,8 +111,8 @@ class YooKassaNotificationProcessor(
     }
 
     private fun markPaid(
-        payment: ru.chousik.blps_kt.model.PaymentRequest,
-        extraService: ru.chousik.blps_kt.model.ExtraServiceRequest
+        payment: ru.chousik.kt_blps.model.PaymentRequest,
+        extraService: ru.chousik.kt_blps.model.ExtraServiceRequest
     ) {
         if (payment.status == PaymentRequestStatus.PAID && extraService.status == ExtraServiceRequestStatus.PAID) {
             return
@@ -133,8 +133,8 @@ class YooKassaNotificationProcessor(
     }
 
     private fun markFailed(
-        payment: ru.chousik.blps_kt.model.PaymentRequest,
-        extraService: ru.chousik.blps_kt.model.ExtraServiceRequest
+        payment: ru.chousik.kt_blps.model.PaymentRequest,
+        extraService: ru.chousik.kt_blps.model.ExtraServiceRequest
     ) {
         if (payment.status == PaymentRequestStatus.FAILED &&
             extraService.status == ExtraServiceRequestStatus.PAYMENT_FAILED

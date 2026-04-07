@@ -1,7 +1,7 @@
-package ru.chousik.blps_kt.security
+package ru.chousik.kt_blps.security
 
 import java.util.UUID
-import ru.chousik.blps_kt.model.UserRole
+import ru.chousik.kt_blps.model.UserRole
 
 data class XmlAccountDefinition(
     val username: String,

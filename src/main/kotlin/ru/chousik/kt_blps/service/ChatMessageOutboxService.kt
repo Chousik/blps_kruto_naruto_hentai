@@ -1,14 +1,14 @@
-package ru.chousik.blps_kt.service
+package ru.chousik.kt_blps.service
 
 import com.fasterxml.jackson.databind.json.JsonMapper
 import java.time.OffsetDateTime
 import java.util.UUID
 import org.springframework.stereotype.Service
-import ru.chousik.blps_kt.api.chat.ChatMessageResponse
-import ru.chousik.blps_kt.model.ChatMessage
-import ru.chousik.blps_kt.model.ChatMessageOutbox
-import ru.chousik.blps_kt.model.ChatMessageOutboxStatus
-import ru.chousik.blps_kt.repository.ChatMessageOutboxRepository
+import ru.chousik.kt_blps.api.chat.ChatMessageResponse
+import ru.chousik.kt_blps.model.ChatMessage
+import ru.chousik.kt_blps.model.ChatMessageOutbox
+import ru.chousik.kt_blps.model.ChatMessageOutboxStatus
+import ru.chousik.kt_blps.repository.ChatMessageOutboxRepository
 
 @Service
 class ChatMessageOutboxService(

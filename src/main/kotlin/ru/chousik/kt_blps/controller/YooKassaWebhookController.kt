@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.controller
+package ru.chousik.kt_blps.controller
 
 import com.fasterxml.jackson.databind.json.JsonMapper
 import jakarta.servlet.http.HttpServletRequest
@@ -10,8 +10,8 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.blps_kt.service.payment.YooKassaNotificationProcessor
-import ru.chousik.blps_kt.service.payment.YooKassaWebhookSecurityService
+import ru.chousik.kt_blps.service.payment.YooKassaNotificationProcessor
+import ru.chousik.kt_blps.service.payment.YooKassaWebhookSecurityService
 
 @RestController
 @RequestMapping("/webhooks/yookassa")

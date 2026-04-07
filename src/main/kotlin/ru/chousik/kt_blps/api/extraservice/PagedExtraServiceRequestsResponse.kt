@@ -1,4 +1,4 @@
-package ru.chousik.blps_kt.api.extraservice
+package ru.chousik.kt_blps.api.extraservice
 
 data class PagedExtraServiceRequestsResponse(
     val items: List<ExtraServiceRequestResponseDTO>,
