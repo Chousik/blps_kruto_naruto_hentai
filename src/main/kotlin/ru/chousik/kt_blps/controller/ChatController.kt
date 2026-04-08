@@ -4,6 +4,8 @@ import jakarta.validation.Valid
 import jakarta.validation.constraints.Max
 import jakarta.validation.constraints.Min
 import java.util.UUID
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.validation.annotation.Validated
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 import ru.chousik.kt_blps.dto.chat.ChatResponse
 import ru.chousik.kt_blps.dto.chat.CreateChatRequest
 import ru.chousik.kt_blps.dto.chat.PagedChatsResponse
+import ru.chousik.kt_blps.security.AuthenticatedAccount
 import ru.chousik.kt_blps.service.ChatService
 
 @RestController
@@ -24,32 +27,35 @@ class ChatController(
     private val chatService: ChatService
 ) {
 
+    @PreAuthorize("hasAuthority('PRIV_CHAT_CREATE')")
     @PostMapping("/chats")
     fun createChat(
-        @RequestParam("requesterId") requesterId: UUID,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
         @Valid @RequestBody request: CreateChatRequest
     ): ChatResponse {
-        val chat = chatService.createChat(requesterId, request)
+        val chat = chatService.createChat(authenticatedAccount.userId, request)
         return ChatResponse.from(chat)
     }
 
+    @PreAuthorize("hasAuthority('PRIV_CHAT_READ')")
     @GetMapping("/chats/{chatId}")
     fun getChat(
         @PathVariable chatId: UUID,
-        @RequestParam("requesterId") requesterId: UUID
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
     ): ChatResponse {
-        val chat = chatService.getChatForUser(chatId, requesterId)
+        val chat = chatService.getChatForUser(chatId, authenticatedAccount.userId)
         return ChatResponse.from(chat)
     }
 
+    @PreAuthorize("hasAuthority('PRIV_CHAT_LIST')")
     @GetMapping("/chats")
     fun getUserChats(
-        @RequestParam("requesterId") requesterId: UUID,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
         @RequestParam("userId", required = false) userId: UUID?,
         @RequestParam("limit", defaultValue = "20") @Min(1) @Max(100) limit: Int,
         @RequestParam("offset", defaultValue = "0") @Min(0) offset: Long
     ): PagedChatsResponse {
-        val page = chatService.getChatsForUser(requesterId, userId, limit, offset)
+        val page = chatService.getChatsForUser(authenticatedAccount.userId, userId, limit, offset)
         return PagedChatsResponse(
             items = page.content.map { ChatResponse.from(it) },
             total = page.totalElements,
