@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 import ru.chousik.kt_blps.dto.chat.ChatMessageResponse
 import ru.chousik.kt_blps.dto.chat.CreateChatMessageRequest
 import ru.chousik.kt_blps.dto.chat.PagedChatMessagesResponse
-import ru.chousik.kt_blps.security.AuthenticatedAccount
+import ru.chousik.kt_blps.security.XmlAccountPrincipal
 import ru.chousik.kt_blps.service.ChatMessageService
 
 @RestController
@@ -31,7 +31,7 @@ class ChatMessageController(
     @PostMapping("/chats/{chatId}/messages")
     fun createMessage(
         @PathVariable chatId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @Valid @RequestBody request: CreateChatMessageRequest
     ): ChatMessageResponse =
         chatMessageService.createMessage(chatId, authenticatedAccount.userId, request)
@@ -40,7 +40,7 @@ class ChatMessageController(
     @GetMapping("/chats/{chatId}/messages")
     fun getMessages(
         @PathVariable chatId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @RequestParam("limit", defaultValue = "20") @Min(1) @Max(100) limit: Int,
         @RequestParam("offset", defaultValue = "0") @Min(0) offset: Long
     ): PagedChatMessagesResponse {
@@ -58,7 +58,7 @@ class ChatMessageController(
     fun getMessage(
         @PathVariable chatId: UUID,
         @PathVariable messageId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ): ChatMessageResponse =
         chatMessageService.getMessage(chatId, messageId, authenticatedAccount.userId)
 }

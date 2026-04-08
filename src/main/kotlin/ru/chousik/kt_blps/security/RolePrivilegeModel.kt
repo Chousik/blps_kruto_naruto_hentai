@@ -5,8 +5,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.stereotype.Component
 import ru.chousik.kt_blps.model.UserRole
 
-@Component
-class RolePrivilegeModel {
+object RolePrivilegeModel {
 
     private val rolePrivileges: Map<UserRole, Set<Privilege>> = mapOf(
         UserRole.GUEST to setOf(

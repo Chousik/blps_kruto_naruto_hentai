@@ -18,6 +18,7 @@ import ru.chousik.kt_blps.security.JaasXmlAuthenticationProvider
 class SecurityConfig(
     private val jaasXmlAuthenticationProvider: JaasXmlAuthenticationProvider
 ) {
+
     @Bean
     fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 

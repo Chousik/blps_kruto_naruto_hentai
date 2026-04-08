@@ -25,7 +25,7 @@ import ru.chousik.kt_blps.dto.extraservice.PagedExtraServiceRequestsResponse
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionRequest
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionResponse
 import ru.chousik.kt_blps.dto.payment.PaymentRequestView
-import ru.chousik.kt_blps.security.AuthenticatedAccount
+import ru.chousik.kt_blps.security.XmlAccountPrincipal
 import ru.chousik.kt_blps.service.ExtraServiceRequestService
 
 @RestController
@@ -38,7 +38,7 @@ class ExtraServiceRequestController(
     @PreAuthorize("hasAuthority('PRIV_EXTRA_SERVICE_CREATE')")
     @PostMapping("/extra-services")
     fun createExtraService(
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @RequestParam("chatId") chatId: UUID,
         @Valid @RequestBody dto: ExtraServiceRequestCreateDTO
     ): ExtraServiceRequestResponseDTO =
@@ -47,7 +47,7 @@ class ExtraServiceRequestController(
     @PreAuthorize("hasAuthority('PRIV_EXTRA_SERVICE_READ')")
     @GetMapping("/extra-services")
     fun getChatExtraServices(
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @RequestParam("chatId") chatId: UUID,
         @RequestParam("limit", defaultValue = "20") @Min(1) @Max(100) limit: Int,
         @RequestParam("offset", defaultValue = "0") @Min(0) offset: Long
@@ -70,7 +70,7 @@ class ExtraServiceRequestController(
     @GetMapping("/extra-services/{serviceId}")
     fun getExtraService(
         @PathVariable serviceId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ): ExtraServiceRequestResponseDTO =
         extraServiceRequestService.getExtraService(serviceId, authenticatedAccount.userId)
 
@@ -78,7 +78,7 @@ class ExtraServiceRequestController(
     @GetMapping("/extra-services/{serviceId}/payment")
     fun getExtraServicePayment(
         @PathVariable serviceId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ): PaymentRequestView =
         extraServiceRequestService.getExtraServicePayment(serviceId, authenticatedAccount.userId)
 
@@ -86,7 +86,7 @@ class ExtraServiceRequestController(
     @PutMapping("/extra-services/{serviceId}")
     fun updateExtraService(
         @PathVariable serviceId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @Valid @RequestBody dto: ExtraServiceRequestUpdateDTO
     ): ExtraServiceRequestResponseDTO =
         extraServiceRequestService.updateExtraService(serviceId, authenticatedAccount.userId, dto)
@@ -95,7 +95,7 @@ class ExtraServiceRequestController(
     @PostMapping("/extra-services/{serviceId}/decision")
     fun decideExtraService(
         @PathVariable serviceId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @Valid @RequestBody request: ExtraServiceDecisionRequest
     ): ExtraServiceDecisionResponse =
         extraServiceRequestService.decideExtraService(serviceId, authenticatedAccount.userId, request)
@@ -105,7 +105,7 @@ class ExtraServiceRequestController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteExtraService(
         @PathVariable serviceId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ) {
         extraServiceRequestService.deleteExtraService(serviceId, authenticatedAccount.userId)
     }

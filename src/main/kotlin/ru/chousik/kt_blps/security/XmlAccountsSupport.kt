@@ -19,7 +19,7 @@ object XmlAccountsSupport {
     fun loadAccounts(location: String): List<XmlAccountDefinition> {
         ensureFileExists(location)
         return openStream(location).use { input ->
-            readDocument(input).accounts.map { it.toDefinition() }
+            readDocument(input).accounts.toList()
         }
     }
 
@@ -29,7 +29,7 @@ object XmlAccountsSupport {
             val path = Path.of(location)
             val document = if (Files.exists(path)) readDocument(Files.newInputStream(path)) else XmlAccountsDocument()
 
-            document.accounts += XmlStoredAccount.from(account)
+            document.accounts += account
             writeDocument(path, document)
         }
     }
@@ -44,16 +44,16 @@ object XmlAccountsSupport {
 
     private fun readDocument(input: InputStream): XmlAccountsDocument =
         XStream(StaxDriver()).apply {
-            allowTypes(arrayOf(XmlAccountsDocument::class.java, XmlStoredAccount::class.java, UserRole::class.java))
+            allowTypes(arrayOf(XmlAccountsDocument::class.java, XmlAccountDefinition::class.java, UserRole::class.java))
             alias("accounts", XmlAccountsDocument::class.java)
-            alias("account", XmlStoredAccount::class.java)
-            addImplicitCollection(XmlAccountsDocument::class.java, "accounts", "account", XmlStoredAccount::class.java)
-            useAttributeFor(XmlStoredAccount::class.java, "username")
-            useAttributeFor(XmlStoredAccount::class.java, "passwordHash")
-            useAttributeFor(XmlStoredAccount::class.java, "role")
-            useAttributeFor(XmlStoredAccount::class.java, "userId")
-            aliasField("password-hash", XmlStoredAccount::class.java, "passwordHash")
-            aliasField("user-id", XmlStoredAccount::class.java, "userId")
+            alias("account", XmlAccountDefinition::class.java)
+            addImplicitCollection(XmlAccountsDocument::class.java, "accounts", "account", XmlAccountDefinition::class.java)
+            useAttributeFor(XmlAccountDefinition::class.java, "username")
+            useAttributeFor(XmlAccountDefinition::class.java, "userId")
+            useAttributeFor(XmlAccountDefinition::class.java, "passwordHash")
+            useAttributeFor(XmlAccountDefinition::class.java, "role")
+            aliasField("password-hash", XmlAccountDefinition::class.java, "passwordHash")
+            aliasField("user-id", XmlAccountDefinition::class.java, "userId")
         }.fromXML(input) as XmlAccountsDocument
 
     private fun writeDocument(path: Path, document: XmlAccountsDocument) {
@@ -70,20 +70,5 @@ object XmlAccountsSupport {
     private fun openStream(location: String): InputStream =
         FileInputStream(location)
 
-    data class XmlAccountsDocument(val accounts: MutableList<XmlStoredAccount> = mutableListOf())
-
-    data class XmlStoredAccount(
-        var username: String = "",
-        var passwordHash: String = "",
-        var role: UserRole = UserRole.GUEST,
-        var userId: String = ""
-    ) {
-        fun toDefinition(): XmlAccountDefinition =
-            XmlAccountDefinition(username, passwordHash, role, java.util.UUID.fromString(userId))
-
-        companion object {
-            fun from(account: XmlAccountDefinition): XmlStoredAccount =
-                XmlStoredAccount(account.username, account.passwordHash, account.role, account.userId.toString())
-        }
-    }
+    data class XmlAccountsDocument(val accounts: MutableList<XmlAccountDefinition> = mutableListOf())
 }

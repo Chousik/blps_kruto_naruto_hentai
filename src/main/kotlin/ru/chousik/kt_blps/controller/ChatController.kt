@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController
 import ru.chousik.kt_blps.dto.chat.ChatResponse
 import ru.chousik.kt_blps.dto.chat.CreateChatRequest
 import ru.chousik.kt_blps.dto.chat.PagedChatsResponse
-import ru.chousik.kt_blps.security.AuthenticatedAccount
+import ru.chousik.kt_blps.security.XmlAccountPrincipal
 import ru.chousik.kt_blps.service.ChatService
 
 @RestController
@@ -30,7 +30,7 @@ class ChatController(
     @PreAuthorize("hasAuthority('PRIV_CHAT_CREATE')")
     @PostMapping("/chats")
     fun createChat(
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @Valid @RequestBody request: CreateChatRequest
     ): ChatResponse {
         val chat = chatService.createChat(authenticatedAccount.userId, request)
@@ -50,7 +50,7 @@ class ChatController(
     @PreAuthorize("hasAuthority('PRIV_CHAT_LIST')")
     @GetMapping("/chats")
     fun getUserChats(
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount,
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
         @RequestParam("userId", required = false) userId: UUID?,
         @RequestParam("limit", defaultValue = "20") @Min(1) @Max(100) limit: Int,
         @RequestParam("offset", defaultValue = "0") @Min(0) offset: Long
