@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>BLPS Auth + Chat Console</title>
+  <style>
+    :root {
+      --bg: #edf2f8;
+      --panel: #ffffff;
+      --line: #d7dfeb;
+      --text: #182230;
+      --muted: #667085;
+      --primary: #175cd3;
+      --secondary: #344054;
+      --ok: #067647;
+      --danger: #b42318;
+      --own: #dbeafe;
+      --system: #ecfdf3;
+      --accent: #f4f8ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(23, 92, 211, 0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(6, 118, 71, 0.10), transparent 26%),
+        var(--bg);
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 12px 28px rgba(16, 24, 40, 0.08);
+    }
+
+    .panel.highlight {
+      background:
+        linear-gradient(135deg, rgba(23, 92, 211, 0.06), rgba(52, 64, 84, 0.02)),
+        var(--panel);
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 10px;
+    }
+
+    h1 {
+      font-size: 26px;
+      letter-spacing: -0.02em;
+    }
+
+    h2 {
+      font-size: 17px;
+    }
+
+    h3 {
+      font-size: 15px;
+    }
+
+    .intro {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+    }
+
+    .auth-layout {
+      display: grid;
+      grid-template-columns: 1.05fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1.15fr 1.4fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .auth-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #f8fafc;
+      padding: 10px 12px;
+    }
+
+    .card strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    label {
+      display: block;
+      margin: 8px 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input, textarea, select {
+      width: 100%;
+      margin-top: 4px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 11px;
+      font-size: 14px;
+      background: #fff;
+      color: var(--text);
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      color: #fff;
+      background: var(--primary);
+    }
+
+    button.secondary {
+      background: var(--secondary);
+    }
+
+    button.ghost {
+      background: #eaf0fb;
+      color: #344054;
+    }
+
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin: 4px 0 10px;
+      font-size: 14px;
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.err {
+      color: var(--danger);
+    }
+
+    .status.neutral {
+      color: var(--muted);
+    }
+
+    .note {
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--accent);
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 13px;
+    }
+
+    .feed, .log, pre {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      margin: 0;
+      overflow: auto;
+    }
+
+    .feed {
+      min-height: 540px;
+      max-height: 680px;
+      padding: 12px;
+      background: #fff;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .msg {
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #f8fafc;
+      padding: 10px 12px;
+    }
+
+    .msg.own {
+      background: var(--own);
+    }
+
+    .msg.system {
+      background: var(--system);
+    }
+
+    .msg-head {
+      margin-bottom: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .msg-body {
+      white-space: pre-wrap;
+      word-break: break-word;
+      line-height: 1.45;
+    }
+
+    .log, pre {
+      max-height: 320px;
+      padding: 10px;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #fff;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #d1fae5;
+    }
+
+    @media (max-width: 1100px) {
+      .auth-layout,
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+
+      .feed {
+        min-height: 360px;
+      }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <section class="panel highlight">
+    <h1>BLPS Auth + Chat Console</h1>
+    <p class="intro">
+      Эта страница хранит введённые credentials локально и подставляет
+      <code>Authorization: Basic ...</code> в каждый REST-запрос. Отдельной
+      серверной сессии, <code>/auth/session</code> и <code>/me</code> в текущем backend нет.
+    </p>
+  </section>
+
+  <section class="auth-layout">
+    <section class="panel">
+      <h2>Авторизация</h2>
+      <div id="authStatus" class="status neutral">HTTP Basic credentials не заданы.</div>
+      <div class="grid">
+        <label>
+          Username
+          <input id="loginUsername" value="guest-alex" autocomplete="username">
+        </label>
+        <label>
+          Password
+          <input id="loginPassword" type="password" value="guestpass" autocomplete="current-password">
+        </label>
+      </div>
+      <div class="actions">
+        <button id="btnLogin">Use Basic Credentials</button>
+        <button class="secondary" id="btnCheckSession">Check Basic Auth</button>
+        <button class="ghost" id="btnLogout">Clear Credentials</button>
+      </div>
+      <div class="note">
+        Пароль нужен только для формирования HTTP Basic заголовка. Серверной сессии нет,
+        поэтому каждый REST-запрос уходит с теми credentials, которые ты задал сверху.
+      </div>
+      <div class="auth-grid">
+        <div class="card"><strong>Username</strong><span id="meUsername">-</span></div>
+        <div class="card"><strong>User ID</strong><span id="meUserId">unknown</span></div>
+        <div class="card"><strong>Role</strong><span id="meRole">unknown</span></div>
+        <div class="card"><strong>Auth Mode</strong><span id="meAuthorities">HTTP Basic</span></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Регистрация</h2>
+      <div id="registerStatus" class="status neutral">В текущем backend нет endpoint /auth/register.</div>
+      <div class="grid">
+        <label>
+          Username
+          <input id="registerUsername" placeholder="new-user" autocomplete="username">
+        </label>
+        <label>
+          Email
+          <input id="registerEmail" type="email" placeholder="new-user@example.com" autocomplete="email">
+        </label>
+        <label>
+          Password
+          <input id="registerPassword" type="password" placeholder="minimum 8 chars" autocomplete="new-password">
+        </label>
+        <label>
+          Role
+          <select id="registerRole">
+            <option value="GUEST">GUEST / user</option>
+            <option value="HOST">HOST</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <button id="btnRegister" disabled>Register</button>
+      </div>
+      <div class="note">
+        Этот блок оставлен только как памятка. Сейчас страница работает только с уже существующими
+        учетками из <code>accounts.xml</code>.
+      </div>
+    </section>
+  </section>
+
+  <section class="panel">
+    <h2>Operations</h2>
+    <div class="grid">
+      <label>
+        Base URL
+        <input id="baseUrl">
+      </label>
+      <label>
+        Inspect User ID
+        <input id="inspectUserId" placeholder="optional, mainly for ADMIN">
+      </label>
+      <label>
+        Guest User ID
+        <input id="guestId" value="11111111-1111-4111-8111-111111111111">
+      </label>
+      <label>
+        Host User ID
+        <input id="hostId" value="33333333-3333-4333-8333-333333333333">
+      </label>
+      <label>
+        Chat ID
+        <input id="chatId" placeholder="chat uuid">
+      </label>
+      <label>
+        Service ID
+        <input id="serviceId" placeholder="extra service uuid">
+      </label>
+      <label>
+        Message Text
+        <input id="messageText" value="hello from auth console">
+      </label>
+      <label>
+        Extra Service Title
+        <input id="extraTitle" value="Late checkout">
+      </label>
+      <label>
+        Extra Service Amount
+        <input id="extraAmount" value="1500.00">
+      </label>
+      <label>
+        Extra Service Currency
+        <input id="extraCurrency" value="RUB">
+      </label>
+      <label>
+        Guest Decision
+        <select id="decision">
+          <option value="ACCEPT">ACCEPT</option>
+          <option value="REJECT">REJECT</option>
+        </select>
+      </label>
+    </div>
+    <div class="actions">
+      <button class="requires-auth" id="btnRefreshMe">Check Basic Auth</button>
+      <button class="requires-auth" id="btnCreateChat">POST /chats</button>
+      <button class="requires-auth" id="btnGetChats">GET /chats</button>
+      <button class="requires-auth" id="btnCreateMsg">POST /chats/{id}/messages</button>
+      <button class="requires-auth" id="btnGetMsgs">GET /chats/{id}/messages</button>
+      <button class="requires-auth" id="btnCreateExtra">POST /extra-services</button>
+      <button class="requires-auth" id="btnGetExtra">GET /extra-services</button>
+      <button class="requires-auth" id="btnDecideExtra">POST /extra-services/{id}/decision</button>
+      <button class="requires-auth" id="btnGetPayment">GET /extra-services/{id}/payment</button>
+      <button class="ghost" id="btnClearResponse">Clear Response</button>
+    </div>
+  </section>
+
+  <section class="dashboard">
+    <section class="panel">
+      <h2>Chat Tools</h2>
+      <div id="chatStatus" class="status neutral">WebSocket не настроен в текущем backend.</div>
+      <div class="actions">
+        <button class="requires-auth" id="btnOpenChat">WebSocket Unsupported</button>
+        <button class="secondary requires-auth" id="btnLoadHistory">Load History</button>
+        <button id="btnSendWs" disabled>Send via WS</button>
+        <button class="ghost" id="btnDisconnectWs" disabled>Disconnect</button>
+        <button class="ghost" id="btnClearFeed">Clear Feed</button>
+      </div>
+      <label>
+        Notes
+        <textarea readonly>Эта страница отправляет HTTP Basic в каждый REST-запрос. Endpoint-ов /auth/session, /auth/logout, /me и /ws в текущем backend нет, поэтому WebSocket и session-based login здесь отключены.</textarea>
+      </label>
+      <h2>Response</h2>
+      <div id="status" class="status neutral">Ready.</div>
+      <pre id="output"></pre>
+    </section>
+
+    <section class="panel">
+      <h2>Chat Feed</h2>
+      <div id="messages" class="feed"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Transport Log</h2>
+      <div id="wsLog" class="log"></div>
+    </section>
+  </section>
+</main>
+
+<script>
+  const byId = (id) => document.getElementById(id);
+
+  const ui = {
+    baseUrl: byId("baseUrl"),
+    inspectUserId: byId("inspectUserId"),
+    guestId: byId("guestId"),
+    hostId: byId("hostId"),
+    chatId: byId("chatId"),
+    serviceId: byId("serviceId"),
+    messageText: byId("messageText"),
+    extraTitle: byId("extraTitle"),
+    extraAmount: byId("extraAmount"),
+    extraCurrency: byId("extraCurrency"),
+    decision: byId("decision"),
+    status: byId("status"),
+    output: byId("output"),
+    chatStatus: byId("chatStatus"),
+    messages: byId("messages"),
+    wsLog: byId("wsLog"),
+    authStatus: byId("authStatus"),
+    registerStatus: byId("registerStatus"),
+    meUsername: byId("meUsername"),
+    meUserId: byId("meUserId"),
+    meRole: byId("meRole"),
+    meAuthorities: byId("meAuthorities"),
+    loginUsername: byId("loginUsername"),
+    loginPassword: byId("loginPassword"),
+    registerUsername: byId("registerUsername"),
+    registerEmail: byId("registerEmail"),
+    registerPassword: byId("registerPassword"),
+    registerRole: byId("registerRole"),
+    btnLogout: byId("btnLogout"),
+    btnSendWs: byId("btnSendWs"),
+    btnDisconnectWs: byId("btnDisconnectWs"),
+    requiresAuth: Array.from(document.querySelectorAll(".requires-auth"))
+  };
+
+  let currentUser = null;
+  let basicAuthHeader = null;
+  let socket = null;
+  let wsConnected = false;
+  let wsSubscribed = false;
+  let renderedMessageIds = new Set();
+  let receiptHandlers = new Map();
+
+  const DEPLOYMENT_BASE_URL = "https://fixly-meow.ru:8443";
+
+  ui.baseUrl.value = /^https?:\/\//.test(window.location.origin)
+    ? window.location.origin
+    : DEPLOYMENT_BASE_URL;
+
+  function pretty(value) {
+    if (typeof value === "string") {
+      return value;
+    }
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch (_e) {
+      return String(value);
+    }
+  }
+
+  function setStatus(text, ok = null) {
+    ui.status.className = ok === null ? "status neutral" : ok ? "status ok" : "status err";
+    ui.status.textContent = text;
+  }
+
+  function setChatStatus(text, ok = null) {
+    ui.chatStatus.className = ok === null ? "status neutral" : ok ? "status ok" : "status err";
+    ui.chatStatus.textContent = text;
+  }
+
+  function setAuthStatus(text, ok = null) {
+    ui.authStatus.className = ok === null ? "status neutral" : ok ? "status ok" : "status err";
+    ui.authStatus.textContent = text;
+  }
+
+  function setRegisterStatus(text, ok = null) {
+    ui.registerStatus.className = ok === null ? "status neutral" : ok ? "status ok" : "status err";
+    ui.registerStatus.textContent = text;
+  }
+
+  function logWs(text, isError = false) {
+    const line = document.createElement("div");
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+    if (isError) {
+      line.style.color = "#b42318";
+    }
+    ui.wsLog.appendChild(line);
+    ui.wsLog.scrollTop = ui.wsLog.scrollHeight;
+  }
+
+  function clearFeed() {
+    ui.messages.innerHTML = "";
+    renderedMessageIds.clear();
+  }
+
+  function renderMessage(payload) {
+    if (payload && payload.id) {
+      if (renderedMessageIds.has(payload.id)) {
+        return;
+      }
+      renderedMessageIds.add(payload.id);
+    }
+
+    const item = document.createElement("div");
+    item.className = "msg";
+    if (payload.type === "PLATFORM") {
+      item.classList.add("system");
+    } else if (currentUser && payload.senderUserId === currentUser.userId) {
+      item.classList.add("own");
+    }
+
+    const head = document.createElement("div");
+    head.className = "msg-head";
+    head.textContent = `${payload.type} • ${payload.senderUsername || "system"} (${payload.senderUserId || "n/a"}) • ${payload.createdAt || ""}`;
+
+    const body = document.createElement("div");
+    body.className = "msg-body";
+    body.textContent = payload.message || "";
+
+    item.appendChild(head);
+    item.appendChild(body);
+    ui.messages.appendChild(item);
+    ui.messages.scrollTop = ui.messages.scrollHeight;
+  }
+
+  function normalizedBaseUrl() {
+    return (ui.baseUrl.value.trim() || window.location.origin).replace(/\/+$/, "");
+  }
+
+  function websocketUrl() {
+    const url = new URL(normalizedBaseUrl());
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  }
+
+  function requireAuthenticated() {
+    if (!currentUser) {
+      throw new Error("Login first.");
+    }
+  }
+
+  async function ensureServerSession() {
+    requireAuthenticated();
+    return currentUser;
+  }
+
+  function rememberReceipt(receiptId, handler) {
+    receiptHandlers.set(receiptId, handler);
+  }
+
+  async function handleReceipt(receiptId) {
+    const handler = receiptHandlers.get(receiptId);
+    if (!handler) {
+      return;
+    }
+
+    receiptHandlers.delete(receiptId);
+    await handler();
+  }
+
+  function updateAuthDependentControls() {
+    const enabled = !!currentUser;
+    ui.requiresAuth.forEach((button) => {
+      button.disabled = !enabled;
+    });
+    ui.btnLogout.disabled = !enabled;
+    updateWsButtons();
+  }
+
+  function setCurrentUser(user) {
+    currentUser = user;
+    ui.meUsername.textContent = user.username;
+    ui.meUserId.textContent = user.userId || "unknown";
+    ui.meRole.textContent = user.role || "unknown";
+    ui.meAuthorities.textContent = "HTTP Basic";
+    setAuthStatus(`HTTP Basic credentials are set for ${user.username}`, true);
+    updateAuthDependentControls();
+  }
+
+  function clearCurrentUser() {
+    currentUser = null;
+    ui.meUsername.textContent = "-";
+    ui.meUserId.textContent = "unknown";
+    ui.meRole.textContent = "unknown";
+    ui.meAuthorities.textContent = "HTTP Basic";
+    setAuthStatus("HTTP Basic credentials не заданы.", null);
+    updateAuthDependentControls();
+  }
+
+  function showResponse(method, path, response) {
+    const payload = {
+      request: { method, url: normalizedBaseUrl() + path },
+      response
+    };
+    setStatus(`${method} ${path} -> ${response.status}`, response.ok);
+    ui.output.textContent = pretty(payload);
+  }
+
+  async function request(path, options = {}) {
+    const method = options.method || "GET";
+    const headers = { ...(options.headers || {}) };
+    if (basicAuthHeader && !headers.Authorization) {
+      headers.Authorization = basicAuthHeader;
+    }
+    let body = options.body;
+    if (body && typeof body !== "string") {
+      headers["Content-Type"] = "application/json";
+      body = JSON.stringify(body);
+    }
+
+    const response = await fetch(normalizedBaseUrl() + path, {
+      method,
+      headers,
+      body,
+      credentials: "omit"
+    });
+
+    const text = await response.text();
+    let parsed = text;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch (_e) {
+      parsed = text;
+    }
+
+    return {
+      status: response.status,
+      ok: response.ok,
+      body: parsed
+    };
+  }
+
+  async function send(path, method, body) {
+    requireAuthenticated();
+    const response = await request(path, { method, body });
+    showResponse(method, path, response);
+
+    if (response.status === 401) {
+      clearCurrentUser();
+      throw new Error("Session expired. Login again.");
+    }
+
+    return response;
+  }
+
+  function toBasicHeader(username, password) {
+    const bytes = new TextEncoder().encode(`${username}:${password}`);
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return `Basic ${btoa(binary)}`;
+  }
+
+  async function refreshCurrentUser(showFailure = false) {
+    if (!basicAuthHeader || !currentUser) {
+      clearCurrentUser();
+      if (showFailure) {
+        setAuthStatus("Сначала задай credentials.", false);
+      }
+      return null;
+    }
+
+    const response = await request("/chats?limit=1&offset=0", { method: "GET" });
+    if (response.ok) {
+      setCurrentUser(currentUser);
+      showResponse("GET", "/chats?limit=1&offset=0", response);
+      return currentUser;
+    }
+
+    clearCurrentUser();
+    if (showFailure) {
+      showResponse("GET", "/chats?limit=1&offset=0", response);
+      setAuthStatus("Credentials rejected by server.", false);
+    }
+    return null;
+  }
+
+  async function login() {
+    const username = ui.loginUsername.value.trim();
+    const password = ui.loginPassword.value;
+    if (!username || !password) {
+      throw new Error("Username and password are required.");
+    }
+
+    const header = toBasicHeader(username, password);
+    const response = await request("/chats?limit=1&offset=0", {
+      method: "GET",
+      headers: {
+        Authorization: header
+      }
+    });
+
+    showResponse("GET", "/chats?limit=1&offset=0", response);
+
+    if (!response.ok) {
+      basicAuthHeader = null;
+      clearCurrentUser();
+      setAuthStatus("Credentials rejected by server.", false);
+      throw new Error(typeof response.body === "string" ? response.body : `Authentication failed with status ${response.status}`);
+    }
+
+    basicAuthHeader = header;
+    ui.loginPassword.value = "";
+    setCurrentUser({
+      username,
+      userId: null,
+      role: null
+    });
+  }
+
+  async function logout() {
+    disconnectSocket();
+    basicAuthHeader = null;
+    clearCurrentUser();
+    setStatus("HTTP Basic credentials cleared", null);
+  }
+
+  async function registerAccount() {
+    throw new Error("Endpoint /auth/register is not implemented in the current backend.");
+  }
+
+  function requireChatId() {
+    const value = ui.chatId.value.trim();
+    if (!value) {
+      throw new Error("chatId is required");
+    }
+    return value;
+  }
+
+  function requireServiceId() {
+    const value = ui.serviceId.value.trim();
+    if (!value) {
+      throw new Error("serviceId is required");
+    }
+    return value;
+  }
+
+  function updateWsButtons() {
+    byId("btnOpenChat").disabled = true;
+    ui.btnSendWs.disabled = true;
+    ui.btnDisconnectWs.disabled = true;
+  }
+
+  function escapeHeaderValue(value) {
+    return String(value)
+      .replace(/\\/g, "\\\\")
+      .replace(/\r/g, "\\r")
+      .replace(/\n/g, "\\n")
+      .replace(/:/g, "\\c");
+  }
+
+  function buildFrame(command, headers = {}, body = "") {
+    const headerLines = Object.entries(headers).map(([key, value]) => `${key}:${escapeHeaderValue(value)}`);
+    return `${command}\n${headerLines.join("\n")}\n\n${body}\0`;
+  }
+
+  function parseFrames(data) {
+    return data.split("\0").filter(Boolean).map((frameText) => {
+      const separatorIndex = frameText.indexOf("\n\n");
+      const head = separatorIndex >= 0 ? frameText.slice(0, separatorIndex) : frameText;
+      const body = separatorIndex >= 0 ? frameText.slice(separatorIndex + 2) : "";
+      const lines = head.split("\n");
+      const command = lines[0];
+      const headers = {};
+
+      for (let i = 1; i < lines.length; i += 1) {
+        const line = lines[i];
+        const colonIndex = line.indexOf(":");
+        if (colonIndex > 0) {
+          headers[line.slice(0, colonIndex)] = line.slice(colonIndex + 1);
+        }
+      }
+
+      return { command, headers, body };
+    });
+  }
+
+  function disconnectSocket() {
+    if (socket) {
+      socket.close();
+    }
+  }
+
+  async function loadHistory() {
+    const chatId = requireChatId();
+    const response = await send(`/chats/${encodeURIComponent(chatId)}/messages?limit=100&offset=0`, "GET");
+    if (response.ok && response.body && Array.isArray(response.body.items)) {
+      clearFeed();
+      response.body.items.forEach(renderMessage);
+    }
+  }
+
+  async function openChatSession() {
+    throw new Error("WebSocket is not configured in the current backend.");
+  }
+
+  async function sendMessageViaWs() {
+    throw new Error("WebSocket is not configured in the current backend.");
+  }
+
+  async function run(action) {
+    try {
+      await action();
+    } catch (e) {
+      setStatus(`Error: ${e.message}`, false);
+      ui.output.textContent = e.stack || String(e);
+    }
+  }
+
+  byId("btnLogin").addEventListener("click", () => run(login));
+  byId("btnCheckSession").addEventListener("click", () => run(() => refreshCurrentUser(true)));
+  byId("btnLogout").addEventListener("click", () => run(logout));
+  byId("btnRegister").addEventListener("click", () => run(registerAccount));
+
+  byId("btnRefreshMe").addEventListener("click", () => run(() => refreshCurrentUser(true)));
+
+  byId("btnCreateChat").addEventListener("click", () => run(async () => {
+    const body = {
+      guestUserId: ui.guestId.value.trim(),
+      hostUserId: ui.hostId.value.trim()
+    };
+    const response = await send("/chats", "POST", body);
+    if (response.ok && response.body && response.body.id) {
+      ui.chatId.value = response.body.id;
+    }
+  }));
+
+  byId("btnGetChats").addEventListener("click", () => run(async () => {
+    const inspectUserId = ui.inspectUserId.value.trim();
+    const query = inspectUserId ? `?userId=${encodeURIComponent(inspectUserId)}&limit=20&offset=0` : "?limit=20&offset=0";
+    await send(`/chats${query}`, "GET");
+  }));
+
+  byId("btnCreateMsg").addEventListener("click", () => run(async () => {
+    const chatId = requireChatId();
+    await send(`/chats/${encodeURIComponent(chatId)}/messages`, "POST", {
+      message: ui.messageText.value.trim()
+    });
+  }));
+
+  byId("btnGetMsgs").addEventListener("click", () => run(loadHistory));
+
+  byId("btnCreateExtra").addEventListener("click", () => run(async () => {
+    const chatId = requireChatId();
+    const response = await send(`/extra-services?chatId=${encodeURIComponent(chatId)}`, "POST", {
+      title: ui.extraTitle.value.trim(),
+      description: "Manual smoke-test request",
+      amount: ui.extraAmount.value.trim(),
+      currency: ui.extraCurrency.value.trim()
+    });
+    if (response.ok && response.body && response.body.id) {
+      ui.serviceId.value = response.body.id;
+    }
+  }));
+
+  byId("btnGetExtra").addEventListener("click", () => run(async () => {
+    const chatId = requireChatId();
+    await send(`/extra-services?chatId=${encodeURIComponent(chatId)}&limit=20&offset=0`, "GET");
+  }));
+
+  byId("btnDecideExtra").addEventListener("click", () => run(async () => {
+    const serviceId = requireServiceId();
+    await send(`/extra-services/${encodeURIComponent(serviceId)}/decision`, "POST", {
+      decision: ui.decision.value
+    });
+  }));
+
+  byId("btnGetPayment").addEventListener("click", () => run(async () => {
+    const serviceId = requireServiceId();
+    await send(`/extra-services/${encodeURIComponent(serviceId)}/payment`, "GET");
+  }));
+
+  byId("btnOpenChat").addEventListener("click", () => run(openChatSession));
+  byId("btnLoadHistory").addEventListener("click", () => run(loadHistory));
+  byId("btnSendWs").addEventListener("click", () => run(async () => {
+    await sendMessageViaWs();
+  }));
+  byId("btnDisconnectWs").addEventListener("click", disconnectSocket);
+  byId("btnClearFeed").addEventListener("click", clearFeed);
+  byId("btnClearResponse").addEventListener("click", () => {
+    ui.output.textContent = "";
+    setStatus("Response cleared", null);
+  });
+
+  clearCurrentUser();
+  setRegisterStatus("В текущем backend нет endpoint /auth/register.", null);
+  updateWsButtons();
+</script>
+</body>
+</html>

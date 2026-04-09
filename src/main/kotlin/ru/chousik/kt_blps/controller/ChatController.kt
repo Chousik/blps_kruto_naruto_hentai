@@ -41,7 +41,7 @@ class ChatController(
     @GetMapping("/chats/{chatId}")
     fun getChat(
         @PathVariable chatId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: AuthenticatedAccount
+        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ): ChatResponse {
         val chat = chatService.getChatForUser(chatId, authenticatedAccount.userId)
         return ChatResponse.from(chat)

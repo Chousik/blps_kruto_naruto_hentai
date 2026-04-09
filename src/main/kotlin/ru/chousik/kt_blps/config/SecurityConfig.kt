@@ -11,16 +11,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.HttpStatusEntryPoint
-import ru.chousik.kt_blps.security.JaasXmlAuthenticationProvider
+import ru.chousik.kt_blps.security.CustomAuthenticationProvider
 
 @Configuration
 @EnableMethodSecurity
 class SecurityConfig(
-    private val jaasXmlAuthenticationProvider: JaasXmlAuthenticationProvider
+    private val customAuthenticationProvider: CustomAuthenticationProvider
 ) {
-
-    @Bean
-    fun passwordEncoder(): PasswordEncoder = BCryptPasswordEncoder()
 
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain =
@@ -30,12 +27,13 @@ class SecurityConfig(
             .logout { it.disable() }
             .requestCache { it.disable() }
             .sessionManagement { it.sessionCreationPolicy(SessionCreationPolicy.STATELESS) }
-            .authenticationProvider(jaasXmlAuthenticationProvider)
+            .authenticationProvider(customAuthenticationProvider)
             .httpBasic(Customizer.withDefaults())
             .exceptionHandling { it.authenticationEntryPoint(HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)) }
             .authorizeHttpRequests {
                 it.requestMatchers(
                     "/error",
+                    "/rest-endpoints-smoke.html",
                     "/swagger-ui.html",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",

@@ -1,20 +1,18 @@
 package ru.chousik.kt_blps.security
 
-import com.thoughtworks.xstream.XStream
-import com.thoughtworks.xstream.io.xml.StaxDriver
+import jakarta.xml.bind.JAXBContext
+import jakarta.xml.bind.Marshaller
 import java.io.FileInputStream
 import java.io.InputStream
-import java.io.OutputStreamWriter
-import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import ru.chousik.kt_blps.model.UserRole
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 object XmlAccountsSupport {
     private val writeLock = ReentrantLock()
+    private val xmlContext: JAXBContext = JAXBContext.newInstance(XmlAccountsDocument::class.java)
 
     fun loadAccounts(location: String): List<XmlAccountDefinition> {
         ensureFileExists(location)
@@ -43,32 +41,21 @@ object XmlAccountsSupport {
     }
 
     private fun readDocument(input: InputStream): XmlAccountsDocument =
-        XStream(StaxDriver()).apply {
-            allowTypes(arrayOf(XmlAccountsDocument::class.java, XmlAccountDefinition::class.java, UserRole::class.java))
-            alias("accounts", XmlAccountsDocument::class.java)
-            alias("account", XmlAccountDefinition::class.java)
-            addImplicitCollection(XmlAccountsDocument::class.java, "accounts", "account", XmlAccountDefinition::class.java)
-            useAttributeFor(XmlAccountDefinition::class.java, "username")
-            useAttributeFor(XmlAccountDefinition::class.java, "userId")
-            useAttributeFor(XmlAccountDefinition::class.java, "passwordHash")
-            useAttributeFor(XmlAccountDefinition::class.java, "role")
-            aliasField("password-hash", XmlAccountDefinition::class.java, "passwordHash")
-            aliasField("user-id", XmlAccountDefinition::class.java, "userId")
-        }.fromXML(input) as XmlAccountsDocument
+        xmlContext.createUnmarshaller().unmarshal(input) as XmlAccountsDocument
 
     private fun writeDocument(path: Path, document: XmlAccountsDocument) {
-        val tempFile = Files.createTempFile(path.parent, "accounts-", ".xml")
+        val parent = path.parent ?: Path.of(".")
+        Files.createDirectories(parent)
+        val tempFile = Files.createTempFile(parent, "accounts-", ".xml")
         Files.newOutputStream(tempFile).use { output ->
-            OutputStreamWriter(output, StandardCharsets.UTF_8).use { writer ->
-                writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
-                XStream(StaxDriver()).toXML(document, writer)
-            }
+            xmlContext.createMarshaller().apply {
+                setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true)
+                setProperty(Marshaller.JAXB_ENCODING, "UTF-8")
+            }.marshal(document, output)
         }
         Files.move(tempFile, path, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
     }
 
     private fun openStream(location: String): InputStream =
         FileInputStream(location)
-
-    data class XmlAccountsDocument(val accounts: MutableList<XmlAccountDefinition> = mutableListOf())
 }

@@ -7,10 +7,11 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: postgres
       DATABASE_URL: jdbc:postgresql://postgres:5432/blps
       DATABASE_USERNAME: blps
       DATABASE_PASSWORD: blps
+    volumes:
+      - ./data/security:/app/data/security
     ports:
       - "8433:8433"
 

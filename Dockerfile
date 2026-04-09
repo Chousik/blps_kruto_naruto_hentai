@@ -8,7 +8,8 @@ RUN chmod +x gradlew
 RUN ./gradlew bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre-jammy
-WORKDIR /app3
+WORKDIR /app
+RUN mkdir -p /app/data/security
 EXPOSE 8433
-COPY --from=build /workspace/build/libs/*.jar app.jar
+COPY --from=build /workspace/build/libs/*.jar /app/app.jar
 ENTRYPOINT ["java","-jar","/app/app.jar"]

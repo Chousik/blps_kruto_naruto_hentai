@@ -63,11 +63,6 @@ class CustomLoginModule : LoginModule {
     }
 
     override fun logout(): Boolean {
-        authenticatedAccount?.let {
-            val principals = subject.principals
-            principals.remove(it.toPrincipal())
-        }
-        authenticatedAccount = null
         return true
     }
 }

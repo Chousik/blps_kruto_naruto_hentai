@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.jta.JtaTransactionManager
 import org.springframework.transaction.support.TransactionTemplate
-import com.arjuna.ats.jta.TransactionManager as NarayanaTransactionManager
 import com.arjuna.ats.jta.UserTransaction as NarayanaUserTransaction
 
 @Configuration
@@ -13,8 +12,7 @@ class JtaNarayanaConfig {
     @Bean
     fun transactionManager(): PlatformTransactionManager =
         JtaTransactionManager(
-            NarayanaUserTransaction.userTransaction(),
-            NarayanaTransactionManager.transactionManager()
+            NarayanaUserTransaction.userTransaction()
         )
 
     @Bean
