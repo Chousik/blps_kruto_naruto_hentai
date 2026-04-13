@@ -37,7 +37,8 @@ class SecurityConfig(
                     "/swagger-ui.html",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
-                    "/auth/register"
+                    "/auth/register",
+                    "/chat/**"
                 ).permitAll()
                     .anyRequest().authenticated()
             }

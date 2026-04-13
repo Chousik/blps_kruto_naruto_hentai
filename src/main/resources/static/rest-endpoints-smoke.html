@@ -423,9 +423,9 @@
   <section class="dashboard">
     <section class="panel">
       <h2>Chat Tools</h2>
-      <div id="chatStatus" class="status neutral">WebSocket не настроен в текущем backend.</div>
+      <div id="chatStatus" class="status neutral">WebSocket готов к подключению.</div>
       <div class="actions">
-        <button class="requires-auth" id="btnOpenChat">WebSocket Unsupported</button>
+        <button class="requires-auth" id="btnOpenChat">Connect WS</button>
         <button class="secondary requires-auth" id="btnLoadHistory">Load History</button>
         <button id="btnSendWs" disabled>Send via WS</button>
         <button class="ghost" id="btnDisconnectWs" disabled>Disconnect</button>
@@ -433,7 +433,7 @@
       </div>
       <label>
         Notes
-        <textarea readonly>Эта страница отправляет HTTP Basic в каждый REST-запрос. Endpoint-ов /auth/session, /auth/logout, /me и /ws в текущем backend нет, поэтому WebSocket и session-based login здесь отключены.</textarea>
+        <textarea readonly>WebSocket работает через SockJS + STOMP. Нажми Connect WS после установки HTTP Basic. В STOMP CONNECT отправится Authorization: Basic ... . SUBSCRIBE: /topic/chats/{chatId}/messages, SEND: /app/chats/{chatId}/messages.</textarea>
       </label>
       <h2>Response</h2>
       <div id="status" class="status neutral">Ready.</div>
@@ -452,6 +452,8 @@
   </section>
 </main>
 
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1.6.1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
 <script>
   const byId = (id) => document.getElementById(id);
 
@@ -492,7 +494,8 @@
 
   let currentUser = null;
   let basicAuthHeader = null;
-  let socket = null;
+  let stompClient = null;
+  let wsSubscription = null;
   let wsConnected = false;
   let wsSubscribed = false;
   let renderedMessageIds = new Set();
@@ -585,12 +588,7 @@
   }
 
   function websocketUrl() {
-    const url = new URL(normalizedBaseUrl());
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/ws";
-    url.search = "";
-    url.hash = "";
-    return url.toString();
+    return `${normalizedBaseUrl()}/chat`;
   }
 
   function requireAuthenticated() {
@@ -797,9 +795,11 @@
   }
 
   function updateWsButtons() {
-    byId("btnOpenChat").disabled = true;
-    ui.btnSendWs.disabled = true;
-    ui.btnDisconnectWs.disabled = true;
+    const hasAuth = !!basicAuthHeader;
+    const hasChatId = !!ui.chatId.value.trim();
+    byId("btnOpenChat").disabled = !hasAuth || wsConnected || !hasChatId;
+    ui.btnSendWs.disabled = !wsConnected || !wsSubscribed;
+    ui.btnDisconnectWs.disabled = !wsConnected;
   }
 
   function escapeHeaderValue(value) {
@@ -837,9 +837,18 @@
   }
 
   function disconnectSocket() {
-    if (socket) {
-      socket.close();
+    if (wsSubscription) {
+      wsSubscription.unsubscribe();
+      wsSubscription = null;
     }
+    wsSubscribed = false;
+    if (stompClient) {
+      stompClient.deactivate();
+      stompClient = null;
+    }
+    wsConnected = false;
+    setChatStatus("WebSocket disconnected", null);
+    updateWsButtons();
   }
 
   async function loadHistory() {
@@ -852,11 +861,82 @@
   }
 
   async function openChatSession() {
-    throw new Error("WebSocket is not configured in the current backend.");
+    requireAuthenticated();
+    if (!basicAuthHeader) {
+      throw new Error("Set HTTP Basic credentials first.");
+    }
+
+    const chatId = requireChatId();
+    if (wsConnected) {
+      setChatStatus("WebSocket already connected.", true);
+      return;
+    }
+
+    disconnectSocket();
+    setChatStatus("Connecting to WebSocket...", null);
+    logWs(`Connecting to ${websocketUrl()}`);
+
+    stompClient = new StompJs.Client({
+      webSocketFactory: () => new SockJS(websocketUrl()),
+      connectHeaders: {
+        Authorization: basicAuthHeader
+      },
+      reconnectDelay: 0,
+      debug: (text) => logWs(text),
+      onConnect: () => {
+        wsConnected = true;
+        setChatStatus("WebSocket connected.", true);
+        wsSubscription = stompClient.subscribe(`/topic/chats/${chatId}/messages`, (message) => {
+          try {
+            const payload = message.body ? JSON.parse(message.body) : null;
+            if (payload) {
+              renderMessage(payload);
+            }
+          } catch (e) {
+            logWs(`Failed to parse message: ${e.message}`, true);
+          }
+        });
+        wsSubscribed = true;
+        updateWsButtons();
+        logWs(`Subscribed to /topic/chats/${chatId}/messages`);
+      },
+      onStompError: (frame) => {
+        logWs(`STOMP error: ${frame.headers.message || "unknown"} ${frame.body || ""}`, true);
+        setChatStatus("STOMP error.", false);
+      },
+      onWebSocketError: () => {
+        logWs("WebSocket error", true);
+        setChatStatus("WebSocket error.", false);
+      },
+      onWebSocketClose: () => {
+        wsConnected = false;
+        wsSubscribed = false;
+        wsSubscription = null;
+        setChatStatus("WebSocket closed.", null);
+        updateWsButtons();
+      }
+    });
+
+    stompClient.activate();
   }
 
   async function sendMessageViaWs() {
-    throw new Error("WebSocket is not configured in the current backend.");
+    const chatId = requireChatId();
+    if (!stompClient || !wsConnected) {
+      throw new Error("WebSocket is not connected.");
+    }
+    const message = ui.messageText.value.trim();
+    if (!message) {
+      throw new Error("Message text is empty.");
+    }
+    stompClient.publish({
+      destination: `/app/chats/${chatId}/messages`,
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({ message })
+    });
+    logWs(`SEND /app/chats/${chatId}/messages`);
   }
 
   async function run(action) {
@@ -874,6 +954,7 @@
   byId("btnRegister").addEventListener("click", () => run(registerAccount));
 
   byId("btnRefreshMe").addEventListener("click", () => run(() => refreshCurrentUser(true)));
+  ui.chatId.addEventListener("input", updateWsButtons);
 
   byId("btnCreateChat").addEventListener("click", () => run(async () => {
     const body = {
@@ -883,6 +964,7 @@
     const response = await send("/chats", "POST", body);
     if (response.ok && response.body && response.body.id) {
       ui.chatId.value = response.body.id;
+      updateWsButtons();
     }
   }));
 

@@ -222,9 +222,15 @@ class ExtraServiceRequestService(
 
         val savedService = extraServiceRequestRepository.save(service)
         touchChat(service.chat, now)
+        val paymentUrl = updatedPayment.paymentUrl
+        val message = if (paymentUrl.isNullOrBlank()) {
+            "Guest accepted extra service '${savedService.title}'. Payment request created."
+        } else {
+            "Guest accepted extra service '${savedService.title}'. Payment request created. Payment link: $paymentUrl"
+        }
         chatSystemMessageService.append(
             chat = service.chat,
-            message = "Guest accepted extra service '${savedService.title}'. Payment request created."
+            message = message
         )
 
         return ExtraServiceDecisionResponse(
