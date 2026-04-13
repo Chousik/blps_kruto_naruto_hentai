@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.server.ResponseStatusException
+import ru.chousik.kt_blps.config.YooKassaProperties
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestCreateDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestResponseDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestUpdateDTO
@@ -16,6 +17,7 @@ import ru.chousik.kt_blps.dto.payment.ExtraServiceDecision
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionRequest
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionResponse
 import ru.chousik.kt_blps.dto.payment.PaymentRequestView
+import ru.chousik.kt_blps.dto.payment.YooKassaCreatePaymentRequest
 import ru.chousik.kt_blps.model.Chat
 import ru.chousik.kt_blps.model.ExtraServiceRequest
 import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
@@ -35,7 +37,9 @@ class ExtraServiceRequestService(
     private val userRepository: UserRepository,
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
     private val paymentRequestRepository: PaymentRequestRepository,
-    private val chatSystemMessageService: ChatSystemMessageService
+    private val chatSystemMessageService: ChatSystemMessageService,
+    private val yooKassaClient: YooKassaClient,
+    private val yooKassaProperties: YooKassaProperties,
 ) {
 
     @Transactional
@@ -203,10 +207,19 @@ class ExtraServiceRequestService(
             createdAt = now
         }
 
-        service.status = ExtraServiceRequestStatus.PAYMENT_LINK_SENT
-        service.updatedAt = now
-
         val savedPayment = paymentRequestRepository.save(payment)
+        val updatedPayment = try {
+            createAndAttachYooKassaPayment(service, savedPayment)
+        } catch (ex: Exception) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "failed to create payment in YooKassa",
+                ex
+            )
+        }
+
+        service.status = ExtraServiceRequestStatus.PAYMENT_LINK_SENT
+
         val savedService = extraServiceRequestRepository.save(service)
         touchChat(service.chat, now)
         chatSystemMessageService.append(
@@ -216,10 +229,9 @@ class ExtraServiceRequestService(
 
         return ExtraServiceDecisionResponse(
             extraService = ExtraServiceRequestResponseDTO.from(savedService),
-            payment = PaymentRequestView.from(savedPayment)
+            payment = PaymentRequestView.from(updatedPayment)
         )
     }
-
     private fun loadChat(chatId: UUID): Chat =
         chatRepository.findById(chatId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "chat not found") }
@@ -274,5 +286,43 @@ class ExtraServiceRequestService(
     private fun touchChat(chat: Chat, at: OffsetDateTime) {
         chat.updatedAt = at
         chatRepository.save(chat)
+    }
+
+    private fun createAndAttachYooKassaPayment(
+        service: ExtraServiceRequest,
+        payment: PaymentRequest
+    ): PaymentRequest {
+        val request = YooKassaCreatePaymentRequest(
+            amount = YooKassaCreatePaymentRequest.Amount(
+                value = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                currency = service.currency.uppercase()
+            ),
+            capture = true,
+            confirmation = YooKassaCreatePaymentRequest.Confirmation(
+                type = "redirect",
+                return_url = yooKassaProperties.returnUrl
+            ),
+            description = service.title,
+            metadata = mapOf(
+                "extraServiceRequestId" to service.id.toString(),
+                "paymentRequestId" to payment.id.toString(),
+                "chatId" to service.chat.id.toString()
+            )
+        )
+
+        val response = yooKassaClient.createPayment(request)
+
+        val confirmationUrl = response.confirmation?.confirmation_url
+            ?: throw ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "YooKassa did not return confirmation url"
+            )
+
+        payment.providerPaymentId = response.id
+        payment.paymentUrl = confirmationUrl
+        payment.status = PaymentRequestStatus.PENDING
+        payment.expiresAt = OffsetDateTime.now().plusHours(1)
+
+        return paymentRequestRepository.save(payment)
     }
 }

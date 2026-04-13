@@ -27,14 +27,14 @@ class ChatMessageController(
     private val chatMessageService: ChatMessageService
 ) {
 
-    @PreAuthorize("hasAuthority('PRIV_CHAT_MESSAGE_WRITE')")
-    @PostMapping("/chats/{chatId}/messages")
-    fun createMessage(
-        @PathVariable chatId: UUID,
-        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
-        @Valid @RequestBody request: CreateChatMessageRequest
-    ): ChatMessageResponse =
-        chatMessageService.createMessage(chatId, authenticatedAccount.userId, request)
+//    @PreAuthorize("hasAuthority('PRIV_CHAT_MESSAGE_WRITE')")
+//    @PostMapping("/chats/{chatId}/messages")
+//    fun createMessage(
+//        @PathVariable chatId: UUID,
+//        @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal,
+//        @Valid @RequestBody request: CreateChatMessageRequest
+//    ): ChatMessageResponse =
+//        chatMessageService.createMessage(chatId, authenticatedAccount.userId, request)
 
     @PreAuthorize("hasAuthority('PRIV_CHAT_MESSAGE_READ')")
     @GetMapping("/chats/{chatId}/messages")
@@ -52,7 +52,7 @@ class ChatMessageController(
             offset = offset
         )
     }
-
+/*
     @PreAuthorize("hasAuthority('PRIV_CHAT_MESSAGE_READ')")
     @GetMapping("/chats/{chatId}/messages/{messageId}")
     fun getMessage(
@@ -61,4 +61,5 @@ class ChatMessageController(
         @AuthenticationPrincipal(errorOnInvalidType = true) authenticatedAccount: XmlAccountPrincipal
     ): ChatMessageResponse =
         chatMessageService.getMessage(chatId, messageId, authenticatedAccount.userId)
+        */
 }
