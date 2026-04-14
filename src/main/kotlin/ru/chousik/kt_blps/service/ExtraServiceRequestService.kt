@@ -3,11 +3,12 @@ package ru.chousik.kt_blps.service
 import java.math.RoundingMode
 import java.time.OffsetDateTime
 import java.util.UUID
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 import ru.chousik.kt_blps.config.YooKassaProperties
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestCreateDTO
@@ -40,14 +41,17 @@ class ExtraServiceRequestService(
     private val chatSystemMessageService: ChatSystemMessageService,
     private val yooKassaClient: YooKassaClient,
     private val yooKassaProperties: YooKassaProperties,
+    @Qualifier("writeTransactionTemplate")
+    private val writeTransactionTemplate: TransactionTemplate,
+    @Qualifier("readOnlyTransactionTemplate")
+    private val readOnlyTransactionTemplate: TransactionTemplate,
 ) {
 
-    @Transactional
     fun createExtraService(
         chatId: UUID,
         requesterId: UUID,
         dto: ExtraServiceRequestCreateDTO
-    ): ExtraServiceRequestResponseDTO {
+    ): ExtraServiceRequestResponseDTO = writeTransactionTemplate.execute {
         val chat = loadChat(chatId)
         val requester = loadUser(requesterId)
 
@@ -72,35 +76,34 @@ class ExtraServiceRequestService(
             chat = chat,
             message = "Host proposed extra service '${saved.title}' for ${saved.amount} ${saved.currency}."
         )
-        return ExtraServiceRequestResponseDTO.from(saved)
+        ExtraServiceRequestResponseDTO.from(saved)
     }
 
-    @Transactional(readOnly = true)
     fun getExtraServicesForChat(
         chatId: UUID,
         requesterId: UUID,
         limit: Int,
         offset: Long
-    ): Page<ExtraServiceRequestResponseDTO> {
+    ): Page<ExtraServiceRequestResponseDTO> = readOnlyTransactionTemplate.execute {
         val chat = loadChat(chatId)
         val requester = loadUser(requesterId)
         ensureParticipantOrAdmin(chat, requester)
 
         val pageable = OffsetBasedPageRequest(limit, offset, Sort.by(Sort.Direction.DESC, "createdAt"))
-        return extraServiceRequestRepository.findAllByChatId(chatId, pageable)
+        extraServiceRequestRepository.findAllByChatId(chatId, pageable)
             .map { ExtraServiceRequestResponseDTO.from(it) }
     }
 
-    @Transactional(readOnly = true)
-    fun getExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceRequestResponseDTO {
+    fun getExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceRequestResponseDTO =
+        readOnlyTransactionTemplate.execute<ExtraServiceRequestResponseDTO> {
         val service = loadExtraService(serviceId)
         val requester = loadUser(requesterId)
         ensureParticipantOrAdmin(service.chat, requester)
-        return ExtraServiceRequestResponseDTO.from(service)
+        ExtraServiceRequestResponseDTO.from(service)
     }
 
-    @Transactional(readOnly = true)
-    fun getExtraServicePayment(serviceId: UUID, requesterId: UUID): PaymentRequestView {
+    fun getExtraServicePayment(serviceId: UUID, requesterId: UUID): PaymentRequestView =
+        readOnlyTransactionTemplate.execute {
         val service = loadExtraService(serviceId)
         val requester = loadUser(requesterId)
         ensureParticipantOrAdmin(service.chat, requester)
@@ -108,15 +111,14 @@ class ExtraServiceRequestService(
         val payment = paymentRequestRepository.findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "payment request not found for extra service")
 
-        return PaymentRequestView.from(payment)
+        PaymentRequestView.from(payment)
     }
 
-    @Transactional
     fun updateExtraService(
         serviceId: UUID,
         requesterId: UUID,
         dto: ExtraServiceRequestUpdateDTO
-    ): ExtraServiceRequestResponseDTO {
+    ): ExtraServiceRequestResponseDTO = writeTransactionTemplate.execute {
         val service = loadExtraService(serviceId)
         val requester = loadUser(requesterId)
         ensureHostOrAdmin(service.chat, requester)
@@ -135,37 +137,38 @@ class ExtraServiceRequestService(
             chat = service.chat,
             message = "Extra service '${savedService.title}' was updated."
         )
-        return ExtraServiceRequestResponseDTO.from(savedService)
+        ExtraServiceRequestResponseDTO.from(savedService)
     }
 
-    @Transactional
     fun deleteExtraService(serviceId: UUID, requesterId: UUID) {
-        val service = loadExtraService(serviceId)
-        val requester = loadUser(requesterId)
-        ensureHostOrAdmin(service.chat, requester)
+        writeTransactionTemplate.executeWithoutResult {
+            val service = loadExtraService(serviceId)
+            val requester = loadUser(requesterId)
+            ensureHostOrAdmin(service.chat, requester)
 
-        val title = service.title
-        val chat = service.chat
-        val now = OffsetDateTime.now()
+            val title = service.title
+            val chat = service.chat
+            val now = OffsetDateTime.now()
 
-        extraServiceRequestRepository.delete(service)
-        touchChat(chat, now)
-        chatSystemMessageService.append(
-            chat = chat,
-            message = "Extra service '$title' was deleted."
-        )
+            extraServiceRequestRepository.delete(service)
+            touchChat(chat, now)
+            chatSystemMessageService.append(
+                chat = chat,
+                message = "Extra service '$title' was deleted."
+            )
+        }
     }
 
-    @Transactional
     fun decideExtraService(
         serviceId: UUID,
         requesterId: UUID,
         request: ExtraServiceDecisionRequest
-    ): ExtraServiceDecisionResponse =
+    ): ExtraServiceDecisionResponse = writeTransactionTemplate.execute {
         when (request.decision!!) {
             ExtraServiceDecision.REJECT -> rejectExtraService(serviceId, requesterId)
             ExtraServiceDecision.ACCEPT -> acceptExtraService(serviceId, requesterId)
         }
+    }
 
     private fun rejectExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceDecisionResponse {
         val service = loadExtraService(serviceId)

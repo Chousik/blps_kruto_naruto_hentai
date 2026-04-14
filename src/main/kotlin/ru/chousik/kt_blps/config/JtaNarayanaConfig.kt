@@ -15,7 +15,13 @@ class JtaNarayanaConfig {
             NarayanaUserTransaction.userTransaction()
         )
 
-    @Bean
-    fun jtaTransactionTemplate(transactionManager: PlatformTransactionManager): TransactionTemplate =
+    @Bean("writeTransactionTemplate")
+    fun writeTransactionTemplate(transactionManager: PlatformTransactionManager): TransactionTemplate =
         TransactionTemplate(transactionManager)
+
+    @Bean("readOnlyTransactionTemplate")
+    fun readOnlyTransactionTemplate(transactionManager: PlatformTransactionManager): TransactionTemplate =
+        TransactionTemplate(transactionManager).apply {
+            isReadOnly = true
+        }
 }

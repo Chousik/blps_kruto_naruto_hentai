@@ -323,7 +323,7 @@
 
     <section class="panel">
       <h2>Регистрация</h2>
-      <div id="registerStatus" class="status neutral">В текущем backend нет endpoint /auth/register.</div>
+      <div id="registerStatus" class="status neutral">Заполни форму и создай новую учетку.</div>
       <div class="grid">
         <label>
           Username
@@ -338,6 +338,14 @@
           <input id="registerPassword" type="password" placeholder="minimum 8 chars" autocomplete="new-password">
         </label>
         <label>
+          First Name
+          <input id="registerFirstName" placeholder="Alex" autocomplete="given-name">
+        </label>
+        <label>
+          Last Name
+          <input id="registerLastName" placeholder="Petrov" autocomplete="family-name">
+        </label>
+        <label>
           Role
           <select id="registerRole">
             <option value="GUEST">GUEST / user</option>
@@ -346,11 +354,11 @@
         </label>
       </div>
       <div class="actions">
-        <button id="btnRegister" disabled>Register</button>
+        <button id="btnRegister">Register</button>
       </div>
       <div class="note">
-        Этот блок оставлен только как памятка. Сейчас страница работает только с уже существующими
-        учетками из <code>accounts.xml</code>.
+        Регистрация создаёт запись и в БД, и в <code>accounts.xml</code>. После успешного ответа
+        credentials автоматически подставляются в блок авторизации сверху.
       </div>
     </section>
   </section>
@@ -485,6 +493,8 @@
     registerUsername: byId("registerUsername"),
     registerEmail: byId("registerEmail"),
     registerPassword: byId("registerPassword"),
+    registerFirstName: byId("registerFirstName"),
+    registerLastName: byId("registerLastName"),
     registerRole: byId("registerRole"),
     btnLogout: byId("btnLogout"),
     btnSendWs: byId("btnSendWs"),
@@ -775,7 +785,42 @@
   }
 
   async function registerAccount() {
-    throw new Error("Endpoint /auth/register is not implemented in the current backend.");
+    const username = ui.registerUsername.value.trim();
+    const email = ui.registerEmail.value.trim();
+    const password = ui.registerPassword.value;
+    const firstName = ui.registerFirstName.value.trim();
+    const lastName = ui.registerLastName.value.trim();
+    const role = ui.registerRole.value;
+
+    if (!username || !email || !password || !firstName || !lastName || !role) {
+      throw new Error("All registration fields are required.");
+    }
+
+    const path = "/auth/register";
+    const response = await request(path, {
+      method: "POST",
+      body: {
+        username,
+        email,
+        password,
+        firstName,
+        lastName,
+        role
+      }
+    });
+
+    showResponse("POST", path, response);
+
+    if (!response.ok) {
+      setRegisterStatus("Registration failed.", false);
+      throw new Error(typeof response.body === "string" ? response.body : `Registration failed with status ${response.status}`);
+    }
+
+    ui.loginUsername.value = username;
+    ui.loginPassword.value = password;
+    ui.inspectUserId.value = response.body?.id || "";
+    ui.registerPassword.value = "";
+    setRegisterStatus(`Registered ${response.body.username} (${response.body.role}). Credentials copied to login form.`, true);
   }
 
   function requireChatId() {
@@ -1026,7 +1071,7 @@
   });
 
   clearCurrentUser();
-  setRegisterStatus("В текущем backend нет endpoint /auth/register.", null);
+  setRegisterStatus("Заполни форму и создай новую учетку.", null);
   updateWsButtons();
 </script>
 </body>

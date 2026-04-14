@@ -2,11 +2,12 @@ package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
-import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
 import ru.chousik.kt_blps.dto.chat.ChatMessageResponse
 import ru.chousik.kt_blps.dto.chat.CreateChatMessageRequest
@@ -23,16 +24,19 @@ import ru.chousik.kt_blps.repository.UserRepository
 class ChatMessageService(
     private val chatRepository: ChatRepository,
     private val userRepository: UserRepository,
-    private val chatMessageRepository: ChatMessageRepository
+    private val chatMessageRepository: ChatMessageRepository,
+    @Qualifier("writeTransactionTemplate")
+    private val writeTransactionTemplate: TransactionTemplate,
+    @Qualifier("readOnlyTransactionTemplate")
+    private val readOnlyTransactionTemplate: TransactionTemplate
 ) {
 
-    @Transactional
     fun createMessage(
         chatId: UUID,
         requesterId: UUID,
         request: CreateChatMessageRequest
-    ): ChatMessageResponse {
-        val chat = requireWriteAccess(chatId, requesterId)
+    ): ChatMessageResponse = writeTransactionTemplate.execute {
+        val chat = requireWriteAccessWithinTransaction(chatId, requesterId)
         val requester = loadUser(requesterId)
         val now = OffsetDateTime.now()
 
@@ -47,46 +51,35 @@ class ChatMessageService(
         chat.updatedAt = now
         chatRepository.save(chat)
         val savedMessage = chatMessageRepository.save(message)
-        return ChatMessageResponse.from(savedMessage)
+        ChatMessageResponse.from(savedMessage)
     }
 
-    @Transactional(readOnly = true)
     fun getMessages(
         chatId: UUID,
         requesterId: UUID,
         limit: Int,
         offset: Long
-    ): Page<ChatMessageResponse> {
-        requireReadAccess(chatId, requesterId)
+    ): Page<ChatMessageResponse> = readOnlyTransactionTemplate.execute {
+        requireReadAccessWithinTransaction(chatId, requesterId)
 
         val pageable = OffsetBasedPageRequest(limit, offset, Sort.by(Sort.Direction.ASC, "createdAt"))
-        return chatMessageRepository.findAllByChatId(chatId, pageable)
+        chatMessageRepository.findAllByChatId(chatId, pageable)
             .map { ChatMessageResponse.from(it) }
     }
 
-    @Transactional(readOnly = true)
-    fun getMessage(
-        chatId: UUID,
-        messageId: UUID,
-        requesterId: UUID
-    ): ChatMessageResponse {
-        requireReadAccess(chatId, requesterId)
-
-        val message = chatMessageRepository.findByIdAndChatId(messageId, chatId)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "chat message not found")
-
-        return ChatMessageResponse.from(message)
+    fun requireReadAccess(chatId: UUID, requesterId: UUID) {
+        readOnlyTransactionTemplate.executeWithoutResult {
+            requireReadAccessWithinTransaction(chatId, requesterId)
+        }
     }
 
-    @Transactional(readOnly = true)
-    fun requireReadAccess(chatId: UUID, requesterId: UUID) {
+    private fun requireReadAccessWithinTransaction(chatId: UUID, requesterId: UUID) {
         val chat = loadChat(chatId)
         val requester = loadUser(requesterId)
         ensureParticipantOrAdminCanRead(chat, requester)
     }
 
-    @Transactional(readOnly = true)
-    fun requireWriteAccess(chatId: UUID, requesterId: UUID): Chat {
+    private fun requireWriteAccessWithinTransaction(chatId: UUID, requesterId: UUID): Chat {
         val chat = loadChat(chatId)
         val requester = loadUser(requesterId)
         ensureParticipantCanWrite(chat, requester)

@@ -27,6 +27,12 @@ object XmlAccountsSupport {
             val path = Path.of(location)
             val document = if (Files.exists(path)) readDocument(Files.newInputStream(path)) else XmlAccountsDocument()
 
+            if (document.accounts.any { it.username == account.username }) {
+                throw IllegalStateException("username is already taken")
+            }
+            if (document.accounts.any { it.userId == account.userId }) {
+                throw IllegalStateException("user id is already registered")
+            }
             document.accounts += account
             writeDocument(path, document)
         }
