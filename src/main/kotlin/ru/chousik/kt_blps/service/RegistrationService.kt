@@ -23,16 +23,16 @@ class RegistrationService(
 ) {
 
     fun register(request: RegisterRequest): RegisterResponse {
-        val role = request.role!!
+        val role = request.role
         if (role == UserRole.ADMIN) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "admin registration is not allowed")
         }
 
-        val username = request.username!!.trim()
-        val email = request.email!!.trim().lowercase()
-        val password = request.password!!
-        val firstName = request.firstName!!.trim()
-        val lastName = request.lastName!!.trim()
+        val username = request.username.trim()
+        val email = request.email.trim().lowercase()
+        val password = request.password
+        val firstName = request.firstName.trim()
+        val lastName = request.lastName.trim()
 
         ensureUniqueCredentials(username, email)
 
@@ -60,7 +60,7 @@ class RegistrationService(
 
         val account = XmlAccountDefinition(
             username = savedUser.username,
-            passwordHash = passwordEncoder.encode(password),
+            passwordHash = passwordEncoder.encode(password)!!,
             userId = savedUser.id,
             role = savedUser.role
         )
