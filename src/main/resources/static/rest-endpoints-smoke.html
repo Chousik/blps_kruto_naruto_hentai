@@ -465,9 +465,6 @@
     authStatus: byId("authStatus"),
     registerStatus: byId("registerStatus"),
     meUsername: byId("meUsername"),
-    meUserId: byId("meUserId"),
-    meRole: byId("meRole"),
-    meAuthorities: byId("meAuthorities"),
     loginUsername: byId("loginUsername"),
     loginPassword: byId("loginPassword"),
     registerUsername: byId("registerUsername"),
@@ -491,7 +488,7 @@
   let renderedMessageIds = new Set();
   let receiptHandlers = new Map();
 
-  const DEPLOYMENT_BASE_URL = "https://fixly-meow.ru:8443";
+  const DEPLOYMENT_BASE_URL = "https://localhost:8443";
 
   ui.baseUrl.value = /^https?:\/\//.test(window.location.origin)
     ? window.location.origin
@@ -618,9 +615,6 @@
   function setCurrentUser(user) {
     currentUser = user;
     ui.meUsername.textContent = user.username;
-    ui.meUserId.textContent = user.userId || "unknown";
-    ui.meRole.textContent = user.role || "unknown";
-    ui.meAuthorities.textContent = "HTTP Basic";
     setAuthStatus(`HTTP Basic credentials are set for ${user.username}`, true);
     updateAuthDependentControls();
   }
@@ -628,9 +622,6 @@
   function clearCurrentUser() {
     currentUser = null;
     ui.meUsername.textContent = "-";
-    ui.meUserId.textContent = "unknown";
-    ui.meRole.textContent = "unknown";
-    ui.meAuthorities.textContent = "HTTP Basic";
     setAuthStatus("HTTP Basic credentials не заданы.", null);
     updateAuthDependentControls();
   }
