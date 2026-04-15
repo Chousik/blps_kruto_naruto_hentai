@@ -19,7 +19,7 @@ class PaymentWebhookService(
     private val writeTransactionTemplate: TransactionTemplate
 ) {
 
-    fun handleWebhook(payload: String, forwardedFor: String?, realIp: String?) {
+    fun handleWebhook(payload: String) {
         writeTransactionTemplate.executeWithoutResult {
             val notification = try {
                 objectMapper.readValue(payload, YooKassaWebhookNotification::class.java)

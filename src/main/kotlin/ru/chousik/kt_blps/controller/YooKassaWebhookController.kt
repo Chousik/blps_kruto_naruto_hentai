@@ -16,10 +16,8 @@ class YooKassaWebhookController(
     @PostMapping("/webhook")
     fun handleWebhook(
         @RequestBody payload: String,
-        @RequestHeader(value = "X-Forwarded-For", required = false) forwardedFor: String?,
-        @RequestHeader(value = "X-Real-IP", required = false) realIp: String?
     ): ResponseEntity<Unit> {
-        paymentWebhookService.handleWebhook(payload, forwardedFor, realIp)
+        paymentWebhookService.handleWebhook(payload)
         return ResponseEntity.ok().build()
     }
 }
