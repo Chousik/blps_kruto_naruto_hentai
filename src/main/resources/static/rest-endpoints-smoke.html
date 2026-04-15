@@ -283,11 +283,6 @@
 <main>
   <section class="panel highlight">
     <h1>BLPS Auth + Chat Console</h1>
-    <p class="intro">
-      Эта страница хранит введённые credentials локально и подставляет
-      <code>Authorization: Basic ...</code> в каждый REST-запрос. Отдельной
-      серверной сессии, <code>/auth/session</code> и <code>/me</code> в текущем backend нет.
-    </p>
   </section>
 
   <section class="auth-layout">
@@ -309,15 +304,8 @@
         <button class="secondary" id="btnCheckSession">Check Basic Auth</button>
         <button class="ghost" id="btnLogout">Clear Credentials</button>
       </div>
-      <div class="note">
-        Пароль нужен только для формирования HTTP Basic заголовка. Серверной сессии нет,
-        поэтому каждый REST-запрос уходит с теми credentials, которые ты задал сверху.
-      </div>
       <div class="auth-grid">
         <div class="card"><strong>Username</strong><span id="meUsername">-</span></div>
-        <div class="card"><strong>User ID</strong><span id="meUserId">unknown</span></div>
-        <div class="card"><strong>Role</strong><span id="meRole">unknown</span></div>
-        <div class="card"><strong>Auth Mode</strong><span id="meAuthorities">HTTP Basic</span></div>
       </div>
     </section>
 
@@ -355,10 +343,6 @@
       </div>
       <div class="actions">
         <button id="btnRegister">Register</button>
-      </div>
-      <div class="note">
-        Регистрация создаёт запись и в БД, и в <code>accounts.xml</code>. После успешного ответа
-        credentials автоматически подставляются в блок авторизации сверху.
       </div>
     </section>
   </section>
@@ -439,10 +423,6 @@
         <button class="ghost" id="btnDisconnectWs" disabled>Disconnect</button>
         <button class="ghost" id="btnClearFeed">Clear Feed</button>
       </div>
-      <label>
-        Notes
-        <textarea readonly>WebSocket работает через SockJS + STOMP. Нажми Connect WS после установки HTTP Basic. В STOMP CONNECT отправится Authorization: Basic ... . SUBSCRIBE: /topic/chats/{chatId}/messages, SEND: /app/chats/{chatId}/messages.</textarea>
-      </label>
       <h2>Response</h2>
       <div id="status" class="status neutral">Ready.</div>
       <pre id="output"></pre>
