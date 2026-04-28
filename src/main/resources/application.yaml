@@ -23,5 +23,11 @@ yookassa:
   secret-key: test_d8oiGRjqStOET2aRBN9XuJUkXLQo3yFXDktAIr9lwHk
   api-url: https://api.yookassa.ru/v3
   return-url: https://youtube.com
+erpnext:
+  base-url: ${ERPNEXT_BASE_URL:http://localhost:18080}
+  api-key: ${ERPNEXT_API_KEY:fd1035d29aa9ca3}
+  api-secret: ${ERPNEXT_API_SECRET:29d5d49d15c1a38}
+  company: ${ERPNEXT_COMPANY:AirBNB}
+  service-item-code: ${ERPNEXT_SERVICE_ITEM_CODE:EXTRA_SERVICE}
 server:
   port: 8433

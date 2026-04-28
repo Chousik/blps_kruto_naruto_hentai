@@ -15,6 +15,8 @@ import ru.chousik.kt_blps.repository.PaymentRequestRepository
 class PaymentWebhookService(
     private val objectMapper: ObjectMapper,
     private val paymentRequestRepository: PaymentRequestRepository,
+    private val afterCommitExecutor: AfterCommitExecutor,
+    private val erpNextSyncService: ErpNextSyncService,
     @Qualifier("writeTransactionTemplate")
     private val writeTransactionTemplate: TransactionTemplate
 ) {
@@ -39,6 +41,9 @@ class PaymentWebhookService(
                 "payment.succeeded" -> {
                     payment.status = PaymentRequestStatus.PAID
                     payment.resolvedAt = OffsetDateTime.now()
+                    afterCommitExecutor.run("sync ERP payment entry for payment request ${payment.id}") {
+                        erpNextSyncService.syncPaymentEntryForPaymentRequest(payment.id)
+                    }
                 }
 
                 "payment.canceled" -> {

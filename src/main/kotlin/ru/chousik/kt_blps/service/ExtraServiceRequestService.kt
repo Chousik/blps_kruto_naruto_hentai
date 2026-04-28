@@ -39,6 +39,8 @@ class ExtraServiceRequestService(
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
     private val paymentRequestRepository: PaymentRequestRepository,
     private val chatSystemMessageService: ChatSystemMessageService,
+    private val afterCommitExecutor: AfterCommitExecutor,
+    private val erpNextSyncService: ErpNextSyncService,
     private val yooKassaClient: YooKassaClient,
     private val yooKassaProperties: YooKassaProperties,
     @Qualifier("writeTransactionTemplate")
@@ -76,6 +78,9 @@ class ExtraServiceRequestService(
             chat = chat,
             message = "Host proposed extra service '${saved.title}' for ${saved.amount} ${saved.currency}."
         )
+        afterCommitExecutor.run("sync ERP quotation for extra service ${saved.id}") {
+            erpNextSyncService.syncQuotationForExtraService(saved.id)
+        }
         ExtraServiceRequestResponseDTO.from(saved)
     }
 
@@ -235,6 +240,9 @@ class ExtraServiceRequestService(
             chat = service.chat,
             message = message
         )
+        afterCommitExecutor.run("sync ERP sales flow for extra service ${savedService.id}") {
+            erpNextSyncService.syncSalesFlowForAcceptedExtraService(savedService.id)
+        }
 
         return ExtraServiceDecisionResponse(
             extraService = ExtraServiceRequestResponseDTO.from(savedService),

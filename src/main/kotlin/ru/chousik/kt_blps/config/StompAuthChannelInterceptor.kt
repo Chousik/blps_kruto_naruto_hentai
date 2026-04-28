@@ -60,7 +60,7 @@ class StompAuthChannelInterceptor(
             throw BadCredentialsException("invalid basic credentials")
         }
 
-        val username = decoded.substring(0, separatorIndex)
+        val username = decoded.take(separatorIndex)
         val password = decoded.substring(separatorIndex + 1)
         val authRequest = UsernamePasswordAuthenticationToken.unauthenticated(username, password)
         val authenticated = authenticationProvider.authenticate(authRequest)

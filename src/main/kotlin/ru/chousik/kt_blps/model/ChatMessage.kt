@@ -18,7 +18,8 @@ class ChatMessage {
     lateinit var id: UUID
 
     @field:NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne
+    @Fetch(FetchMode.JOIN)
     @JoinColumn(name = "chat_id", nullable = false)
     lateinit var chat: Chat
 

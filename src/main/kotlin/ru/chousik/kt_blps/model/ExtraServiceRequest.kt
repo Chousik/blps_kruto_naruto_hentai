@@ -60,6 +60,18 @@ class ExtraServiceRequest {
     @Column(name = "currency", nullable = false, length = 3)
     lateinit var currency: String
 
+    @field:Size(max = 140)
+    @Column(name = "erp_quotation_id", unique = true, length = 140)
+    var erpQuotationId: String? = null
+
+    @field:Size(max = 140)
+    @Column(name = "erp_sales_order_id", unique = true, length = 140)
+    var erpSalesOrderId: String? = null
+
+    @field:Size(max = 140)
+    @Column(name = "erp_sales_invoice_id", unique = true, length = 140)
+    var erpSalesInvoiceId: String? = null
+
     @field:NotNull
     @field:PastOrPresent
     @Column(name = "created_at", nullable = false)

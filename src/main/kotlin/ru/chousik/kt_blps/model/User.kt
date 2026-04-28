@@ -47,6 +47,10 @@ class User {
     @Column(name = "role", nullable = false, length = 32)
     lateinit var role: UserRole
 
+    @field:Size(max = 140)
+    @Column(name = "erp_customer_id", unique = true, length = 140)
+    var erpCustomerId: String? = null
+
     @field:NotNull
     @Column(name = "created_at", nullable = false)
     lateinit var createdAt: OffsetDateTime
