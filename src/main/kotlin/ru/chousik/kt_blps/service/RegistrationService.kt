@@ -38,7 +38,6 @@ class RegistrationService(
 
         val now = OffsetDateTime.now()
         val user = User().apply {
-            id = UUID.randomUUID()
             this.username = username
             this.email = email
             this.firstName = firstName

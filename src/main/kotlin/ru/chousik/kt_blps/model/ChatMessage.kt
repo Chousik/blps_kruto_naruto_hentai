@@ -15,6 +15,7 @@ import org.hibernate.annotations.FetchMode
 class ChatMessage {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     lateinit var id: UUID
 
     @field:NotNull

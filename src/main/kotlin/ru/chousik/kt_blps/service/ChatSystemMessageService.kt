@@ -1,7 +1,6 @@
 package ru.chousik.kt_blps.service
 
 import java.time.OffsetDateTime
-import java.util.UUID
 import org.springframework.messaging.simp.SimpMessagingTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionSynchronization
@@ -19,7 +18,6 @@ class ChatSystemMessageService(
 
     fun append(chat: Chat, message: String) {
         val entity = ChatMessage().apply {
-            id = UUID.randomUUID()
             this.chat = chat
             senderUser = null
             this.message = message

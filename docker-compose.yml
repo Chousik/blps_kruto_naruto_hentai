@@ -1,19 +1,45 @@
 services:
-  app:
+  core-service:
     build:
       context: .
       dockerfile: Dockerfile
     depends_on:
       postgres:
         condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/blps
       DATABASE_USERNAME: blps
       DATABASE_PASSWORD: blps
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      PAYMENT_REQUESTS_TOPIC: payment-requests
     volumes:
       - ./data/security:/app/data/security
     ports:
       - "8433:8433"
+
+  payment-worker-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/blps
+      DATABASE_USERNAME: blps
+      DATABASE_PASSWORD: blps
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      PAYMENT_REQUESTS_TOPIC: payment-requests
+      YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1330376}
+      YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_d8oiGRjqStOET2aRBN9XuJUkXLQo3yFXDktAIr9lwHk}
+      YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
+      YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-https://youtube.com}
+    ports:
+      - "8434:8434"
 
   postgres:
     image: postgres:16-alpine
@@ -31,7 +57,41 @@ services:
       test: ["CMD", "pg_isready", "-U", "blps"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
 
 volumes:
   postgres-data:

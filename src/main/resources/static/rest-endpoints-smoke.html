@@ -306,6 +306,9 @@
       </div>
       <div class="auth-grid">
         <div class="card"><strong>Username</strong><span id="meUsername">-</span></div>
+        <div class="card"><strong>User ID</strong><span id="meUserId">unknown</span></div>
+        <div class="card"><strong>Role</strong><span id="meRole">unknown</span></div>
+        <div class="card"><strong>Auth</strong><span id="meAuthorities">HTTP Basic</span></div>
       </div>
     </section>
 
@@ -615,22 +618,28 @@
     updateWsButtons();
   }
 
+  function setText(node, value) {
+    if (node) {
+      node.textContent = value;
+    }
+  }
+
   function setCurrentUser(user) {
     currentUser = user;
-    ui.meUsername.textContent = user.username;
-    ui.meUserId.textContent = user.userId || "unknown";
-    ui.meRole.textContent = user.role || "unknown";
-    ui.meAuthorities.textContent = "HTTP Basic";
+    setText(ui.meUsername, user.username);
+    setText(ui.meUserId, user.userId || "unknown");
+    setText(ui.meRole, user.role || "unknown");
+    setText(ui.meAuthorities, "HTTP Basic");
     setAuthStatus(`HTTP Basic credentials are set for ${user.username}`, true);
     updateAuthDependentControls();
   }
 
   function clearCurrentUser() {
     currentUser = null;
-    ui.meUsername.textContent = "-";
-    ui.meUserId.textContent = "unknown";
-    ui.meRole.textContent = "unknown";
-    ui.meAuthorities.textContent = "HTTP Basic";
+    setText(ui.meUsername, "-");
+    setText(ui.meUserId, "unknown");
+    setText(ui.meRole, "unknown");
+    setText(ui.meAuthorities, "HTTP Basic");
     setAuthStatus("HTTP Basic credentials не заданы.", null);
     updateAuthDependentControls();
   }

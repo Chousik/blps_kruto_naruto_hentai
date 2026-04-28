@@ -1,6 +1,5 @@
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
-RUN mkdir -p /app/data/security
-EXPOSE 8433
+EXPOSE 8434
 COPY build/libs/*.jar /app/app.jar
 ENTRYPOINT ["java","-jar","/app/app.jar"]

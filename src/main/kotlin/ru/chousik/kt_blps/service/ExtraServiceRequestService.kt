@@ -1,24 +1,26 @@
 package ru.chousik.kt_blps.service
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import java.math.RoundingMode
 import java.time.OffsetDateTime
 import java.util.UUID
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
-import ru.chousik.kt_blps.config.YooKassaProperties
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestCreateDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestResponseDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestUpdateDTO
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecision
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionRequest
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionResponse
+import ru.chousik.kt_blps.dto.payment.PaymentRequestCreatedEvent
 import ru.chousik.kt_blps.dto.payment.PaymentRequestView
-import ru.chousik.kt_blps.dto.payment.YooKassaCreatePaymentRequest
 import ru.chousik.kt_blps.model.Chat
 import ru.chousik.kt_blps.model.ExtraServiceRequest
 import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
@@ -39,8 +41,10 @@ class ExtraServiceRequestService(
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
     private val paymentRequestRepository: PaymentRequestRepository,
     private val chatSystemMessageService: ChatSystemMessageService,
-    private val yooKassaClient: YooKassaClient,
-    private val yooKassaProperties: YooKassaProperties,
+    private val kafkaTemplate: KafkaTemplate<String, String>,
+    private val objectMapper: ObjectMapper,
+    @Value("\${app.kafka.payment-topic}")
+    private val paymentTopic: String,
     @Qualifier("writeTransactionTemplate")
     private val writeTransactionTemplate: TransactionTemplate,
     @Qualifier("readOnlyTransactionTemplate")
@@ -59,7 +63,6 @@ class ExtraServiceRequestService(
 
         val now = OffsetDateTime.now()
         val entity = ExtraServiceRequest().apply {
-            id = UUID.randomUUID()
             this.chat = chat
             status = ExtraServiceRequestStatus.WAITING_GUEST_APPROVAL
             title = dto.title!!.trim()
@@ -96,23 +99,24 @@ class ExtraServiceRequestService(
 
     fun getExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceRequestResponseDTO =
         readOnlyTransactionTemplate.execute<ExtraServiceRequestResponseDTO> {
-        val service = loadExtraService(serviceId)
-        val requester = loadUser(requesterId)
-        ensureParticipantOrAdmin(service.chat, requester)
-        ExtraServiceRequestResponseDTO.from(service)
-    }
+            val service = loadExtraService(serviceId)
+            val requester = loadUser(requesterId)
+            ensureParticipantOrAdmin(service.chat, requester)
+            ExtraServiceRequestResponseDTO.from(service)
+        }
 
     fun getExtraServicePayment(serviceId: UUID, requesterId: UUID): PaymentRequestView =
         readOnlyTransactionTemplate.execute {
-        val service = loadExtraService(serviceId)
-        val requester = loadUser(requesterId)
-        ensureParticipantOrAdmin(service.chat, requester)
+            val service = loadExtraService(serviceId)
+            val requester = loadUser(requesterId)
+            ensureParticipantOrAdmin(service.chat, requester)
 
-        val payment = paymentRequestRepository.findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "payment request not found for extra service")
+            val payment = paymentRequestRepository.
+            findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
+                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "payment request not found for extra service")
 
-        PaymentRequestView.from(payment)
-    }
+            PaymentRequestView.from(payment)
+        }
 
     fun updateExtraService(
         serviceId: UUID,
@@ -203,7 +207,6 @@ class ExtraServiceRequestService(
 
         val now = OffsetDateTime.now()
         val payment = PaymentRequest().apply {
-            id = UUID.randomUUID()
             extraServiceRequestId = service.id
             initiatedBy = requester
             status = PaymentRequestStatus.WAITING_PAYMENT
@@ -211,12 +214,21 @@ class ExtraServiceRequestService(
         }
 
         val savedPayment = paymentRequestRepository.save(payment)
-        val updatedPayment = try {
-            createAndAttachYooKassaPayment(service, savedPayment)
+        try {
+            publishPaymentRequestCreated(
+                PaymentRequestCreatedEvent(
+                    paymentRequestId = savedPayment.id,
+                    extraServiceRequestId = service.id,
+                    chatId = service.chat.id,
+                    title = service.title,
+                    amount = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                    currency = service.currency.uppercase()
+                )
+            )
         } catch (ex: Exception) {
             throw ResponseStatusException(
                 HttpStatus.BAD_GATEWAY,
-                "failed to create payment in YooKassa",
+                "failed to publish payment request event",
                 ex
             )
         }
@@ -225,22 +237,17 @@ class ExtraServiceRequestService(
 
         val savedService = extraServiceRequestRepository.save(service)
         touchChat(service.chat, now)
-        val paymentUrl = updatedPayment.paymentUrl
-        val message = if (paymentUrl.isNullOrBlank()) {
-            "Guest accepted extra service '${savedService.title}'. Payment request created."
-        } else {
-            "Guest accepted extra service '${savedService.title}'. Payment request created. Payment link: $paymentUrl"
-        }
         chatSystemMessageService.append(
             chat = service.chat,
-            message = message
+            message = "Guest accepted extra service '${savedService.title}'. Payment request queued for processing."
         )
 
         return ExtraServiceDecisionResponse(
             extraService = ExtraServiceRequestResponseDTO.from(savedService),
-            payment = PaymentRequestView.from(updatedPayment)
+            payment = PaymentRequestView.from(savedPayment)
         )
     }
+
     private fun loadChat(chatId: UUID): Chat =
         chatRepository.findById(chatId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "chat not found") }
@@ -261,8 +268,8 @@ class ExtraServiceRequestService(
 
     private fun ensureParticipantOrAdmin(chat: Chat, requester: User) {
         val allowed = requester.role == UserRole.ADMIN ||
-            requester.id == chat.host.id ||
-            requester.id == chat.guest.id
+                requester.id == chat.host.id ||
+                requester.id == chat.guest.id
         if (!allowed) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "access denied to extra services")
         }
@@ -270,7 +277,7 @@ class ExtraServiceRequestService(
 
     private fun ensureHostOrAdmin(chat: Chat, requester: User) {
         val allowed = (requester.role == UserRole.HOST && requester.id == chat.host.id) ||
-            requester.role == UserRole.ADMIN
+                requester.role == UserRole.ADMIN
         if (!allowed) {
             throw ResponseStatusException(HttpStatus.FORBIDDEN, "only host or admin can modify extra services")
         }
@@ -297,41 +304,8 @@ class ExtraServiceRequestService(
         chatRepository.save(chat)
     }
 
-    private fun createAndAttachYooKassaPayment(
-        service: ExtraServiceRequest,
-        payment: PaymentRequest
-    ): PaymentRequest {
-        val request = YooKassaCreatePaymentRequest(
-            amount = YooKassaCreatePaymentRequest.Amount(
-                value = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
-                currency = service.currency.uppercase()
-            ),
-            capture = true,
-            confirmation = YooKassaCreatePaymentRequest.Confirmation(
-                type = "redirect",
-                return_url = yooKassaProperties.returnUrl
-            ),
-            description = service.title,
-            metadata = mapOf(
-                "extraServiceRequestId" to service.id.toString(),
-                "paymentRequestId" to payment.id.toString(),
-                "chatId" to service.chat.id.toString()
-            )
-        )
-
-        val response = yooKassaClient.createPayment(request)
-
-        val confirmationUrl = response.confirmation?.confirmation_url
-            ?: throw ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "YooKassa did not return confirmation url"
-            )
-
-        payment.providerPaymentId = response.id
-        payment.paymentUrl = confirmationUrl
-        payment.status = PaymentRequestStatus.PENDING
-        payment.expiresAt = OffsetDateTime.now().plusHours(1)
-
-        return paymentRequestRepository.save(payment)
+    private fun publishPaymentRequestCreated(event: PaymentRequestCreatedEvent) {
+        val payload = objectMapper.writeValueAsString(event)
+        kafkaTemplate.send(paymentTopic, event.paymentRequestId.toString(), payload).get()
     }
 }

@@ -1,4 +1,4 @@
-package ru.chousik.kt_blps.dto.payment
+package ru.chousik.payment_worker_service.dto.payment
 
 data class YooKassaCreatePaymentRequest(
     val amount: Amount,

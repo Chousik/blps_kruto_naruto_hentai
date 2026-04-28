@@ -3,6 +3,8 @@ package ru.chousik.kt_blps.model
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
+import jakarta.persistence.GeneratedValue
+import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
@@ -24,6 +26,7 @@ import java.util.UUID
 class Chat {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
     lateinit var id: UUID
 
     @field:NotNull

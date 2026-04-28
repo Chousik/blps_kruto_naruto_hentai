@@ -12,7 +12,7 @@ import javax.security.auth.login.LoginContext
 import javax.security.auth.login.LoginException
 
 @Component
-    class CustomAuthenticationProvider(
+class CustomAuthenticationProvider(
     private val passwordEncoder: PasswordEncoder,
     private val xmlAccountRegistry: XmlAccountRegistry
 ) : AuthenticationProvider {

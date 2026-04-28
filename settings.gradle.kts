@@ -1,1 +1,1 @@
-rootProject.name = "blps_kt_2"
+rootProject.name = "core-service"

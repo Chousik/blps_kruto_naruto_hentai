@@ -1,15 +1,15 @@
-package ru.chousik.kt_blps.service
+package ru.chousik.payment_worker_service.service
 
+import java.nio.charset.StandardCharsets
+import java.util.Base64
+import java.util.UUID
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
-import ru.chousik.kt_blps.config.YooKassaProperties
-import ru.chousik.kt_blps.dto.payment.YooKassaCreatePaymentRequest
-import ru.chousik.kt_blps.dto.payment.YooKassaCreatePaymentResponse
-import java.nio.charset.StandardCharsets
-import java.util.Base64
-import java.util.UUID
+import ru.chousik.payment_worker_service.config.YooKassaProperties
+import ru.chousik.payment_worker_service.dto.payment.YooKassaCreatePaymentRequest
+import ru.chousik.payment_worker_service.dto.payment.YooKassaCreatePaymentResponse
 
 @Component
 class YooKassaClient(
@@ -30,6 +30,8 @@ class YooKassaClient(
             .body(YooKassaCreatePaymentResponse::class.java)
             ?: throw IllegalStateException("Empty response from YooKassa")
     }
+
+    fun returnUrl(): String = properties.returnUrl
 
     private fun buildAuthorizationHeader(): String {
         val raw = "${properties.shopId}:${properties.secretKey}"

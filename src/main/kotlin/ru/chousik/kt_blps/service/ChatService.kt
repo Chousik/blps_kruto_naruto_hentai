@@ -51,7 +51,6 @@ class ChatService(
 
             val now = OffsetDateTime.now()
             val chat = Chat().apply {
-                id = UUID.randomUUID()
                 this.guest = guest
                 this.host = host
                 createdAt = now

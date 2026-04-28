@@ -41,7 +41,6 @@ class ChatMessageService(
         val now = OffsetDateTime.now()
 
         val message = ChatMessage().apply {
-            id = UUID.randomUUID()
             this.chat = chat
             senderUser = requester
             this.message = request.message!!.trim()
@@ -50,7 +49,7 @@ class ChatMessageService(
 
         chat.updatedAt = now
         chatRepository.save(chat)
-        val savedMessage = chatMessageRepository.save(message)
+        val savedMessage = chatMessageRepository.saveAndFlush(message)
         ChatMessageResponse.from(savedMessage)
     }
 

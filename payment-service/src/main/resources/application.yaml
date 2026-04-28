@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: payment-worker-service
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/blps}
+    username: ${DATABASE_USERNAME:blps}
+    password: ${DATABASE_PASSWORD:blps}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: payment-worker-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+yookassa:
+  shop-id: ${YOOKASSA_SHOP_ID:1330376}
+  secret-key: ${YOOKASSA_SECRET_KEY:test_d8oiGRjqStOET2aRBN9XuJUkXLQo3yFXDktAIr9lwHk}
+  api-url: ${YOOKASSA_API_URL:https://api.yookassa.ru/v3}
+  return-url: ${YOOKASSA_RETURN_URL:https://youtube.com}
+app:
+  kafka:
+    payment-topic: ${PAYMENT_REQUESTS_TOPIC:payment-requests}
+server:
+  port: 8434

@@ -38,8 +38,7 @@ class SecurityConfig(
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
                     "/auth/register",
-                    "/chat/**",
-                    "/payments/yookassa/webhook"
+                    "/chat/**"
                 ).permitAll()
                     .anyRequest().authenticated()
             }
