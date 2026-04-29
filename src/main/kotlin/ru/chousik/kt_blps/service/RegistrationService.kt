@@ -20,8 +20,7 @@ class RegistrationService(
     private val userRepository: UserRepository,
     private val xmlAccountRegistry: XmlAccountRegistry,
     private val passwordEncoder: PasswordEncoder,
-    private val erpNextSyncService: ErpNextSyncService,
-    private val afterCommitExecutor: AfterCommitExecutor
+    private val erpSyncOutboxService: ErpSyncOutboxService
 ) {
 
     fun register(request: RegisterRequest): RegisterResponse {
@@ -76,9 +75,7 @@ class RegistrationService(
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "failed to create auth account", ex)
         }
 
-        afterCommitExecutor.run("erp customer sync for user ${savedUser.id}") {
-            erpNextSyncService.syncCustomerForUser(savedUser.id)
-        }
+        erpSyncOutboxService.enqueueSyncCustomerForUser(savedUser.id)
 
         return RegisterResponse.from(savedUser)
     }

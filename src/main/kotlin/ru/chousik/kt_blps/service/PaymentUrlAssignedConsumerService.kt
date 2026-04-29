@@ -8,11 +8,11 @@ import ru.chousik.kt_blps.dto.payment.PaymentUrlAssignedEvent
 @Service
 class PaymentUrlAssignedConsumerService(
     private val objectMapper: ObjectMapper,
-    private val erpNextSyncService: ErpNextSyncService
+    private val erpSyncOutboxService: ErpSyncOutboxService
 ) {
     @KafkaListener(topics = ["\${app.kafka.payment-url-assigned-topic}"])
     fun consume(payload: String) {
         val event = objectMapper.readValue(payload, PaymentUrlAssignedEvent::class.java)
-        erpNextSyncService.syncSalesInvoiceForExtraService(event.extraServiceRequestId)
+        erpSyncOutboxService.enqueueSyncSalesInvoiceForExtraService(event.extraServiceRequestId)
     }
 }
