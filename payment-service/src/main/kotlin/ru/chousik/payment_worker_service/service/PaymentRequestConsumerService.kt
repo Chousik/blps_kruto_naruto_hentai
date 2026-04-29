@@ -37,6 +37,7 @@ class PaymentRequestConsumerService(
         }
 
         val response = yooKassaClient.createPayment(
+            event.paymentRequestId.toString(),
             YooKassaCreatePaymentRequest(
                 amount = YooKassaCreatePaymentRequest.Amount(
                     value = event.amount,
