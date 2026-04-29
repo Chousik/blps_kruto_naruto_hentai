@@ -1,27 +1,31 @@
-package ru.chousik.kt_blps.service
+package ru.chousik.kt_blps.jca.erpnext
 
+import jakarta.resource.NotSupportedException
+import jakarta.resource.ResourceException
+import jakarta.resource.cci.Connection
+import jakarta.resource.cci.ConnectionMetaData
+import jakarta.resource.cci.Interaction
+import jakarta.resource.cci.LocalTransaction
+import jakarta.resource.cci.ResultSetInfo
 import java.time.LocalDate
 import java.util.LinkedHashMap
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
-import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientResponseException
 import ru.chousik.kt_blps.config.ErpNextProperties
 import ru.chousik.kt_blps.dto.erpnext.ErpNextCustomerRequest
 import ru.chousik.kt_blps.dto.erpnext.ErpNextDocument
-import ru.chousik.kt_blps.dto.erpnext.ErpNextPaymentEntryRequest
 import ru.chousik.kt_blps.dto.erpnext.ErpNextQuotationRequest
 import tools.jackson.core.type.TypeReference
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.ObjectMapper
 
-@Component
-class ErpNextClient(
+class ErpNextJcaConnection(
     private val properties: ErpNextProperties,
     private val objectMapper: ObjectMapper
-) {
-
+) : Connection {
+    private var closed = false
     private val restClient = RestClient.builder()
         .baseUrl(properties.baseUrl.removeSuffix("/"))
         .defaultHeader(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE)
@@ -33,8 +37,8 @@ class ErpNextClient(
         .build()
 
     fun ensureCustomer(request: ErpNextCustomerRequest): ErpNextDocument {
+        ensureOpen()
         findCustomerByName(request.customerName)?.let { return it }
-
         val payload = linkedMapOf<String, Any?>(
             "customer_name" to request.customerName,
             "customer_type" to request.customerType,
@@ -42,11 +46,11 @@ class ErpNextClient(
             "territory" to request.territory
         )
         payload.putAll(request.additionalFields)
-
         return createResource("Customer", payload, submit = false)
     }
 
     fun createQuotation(request: ErpNextQuotationRequest): ErpNextDocument {
+        ensureOpen()
         val payload = linkedMapOf<String, Any?>(
             "quotation_to" to request.quotationTo,
             "party_name" to request.partyName,
@@ -65,35 +69,29 @@ class ErpNextClient(
         )
         request.validTill?.let { payload["valid_till"] = it.toString() }
         payload.putAll(request.additionalFields)
-
         return createResource("Quotation", payload, submit = true)
     }
 
-    fun createSalesOrderFromQuotation(
-        quotationName: String,
-        deliveryDate: LocalDate
-    ): ErpNextDocument {
+    fun createSalesOrderFromQuotation(quotationName: String, deliveryDate: LocalDate): ErpNextDocument {
+        ensureOpen()
         val draft = callMethod(
             "erpnext.selling.doctype.quotation.quotation.make_sales_order",
             linkedMapOf("source_name" to quotationName)
         )
         val payload = sanitizeDocumentForInsert(draft).toMutableMap()
         payload["delivery_date"] = deliveryDate.toString()
-
         val items = (payload["items"] as? List<*>)?.map { item ->
             val itemMap = item as? Map<*, *> ?: return@map item
             itemMap.entries.associate { (k, v) -> k.toString() to v }.toMutableMap().apply {
                 this["delivery_date"] = deliveryDate.toString()
             }
         }
-        if (items != null) {
-            payload["items"] = items
-        }
-
+        if (items != null) payload["items"] = items
         return createResource("Sales Order", payload, submit = true)
     }
 
     fun createSalesInvoiceFromSalesOrder(salesOrderName: String): ErpNextDocument {
+        ensureOpen()
         val draft = callMethod(
             "erpnext.selling.doctype.sales_order.sales_order.make_sales_invoice",
             linkedMapOf("source_name" to salesOrderName)
@@ -101,37 +99,28 @@ class ErpNextClient(
         return createResource("Sales Invoice", sanitizeDocumentForInsert(draft), submit = true)
     }
 
-    fun createPaymentEntry(request: ErpNextPaymentEntryRequest): ErpNextDocument {
-        val draft = callMethod(
-            "erpnext.accounts.doctype.payment_entry.payment_entry.get_payment_entry",
-            linkedMapOf<String, Any?>(
-                "dt" to request.referenceDoctype,
-                "dn" to request.referenceName
-            ).apply {
-                request.bankAccount?.let { put("bank_account", it) }
-                request.referenceDate?.let { put("reference_date", it.toString()) }
-            }
-        )
-
-        val payload = sanitizeDocumentForInsert(draft).toMutableMap()
-        request.referenceNo?.let { payload["reference_no"] = it }
-        request.referenceDate?.let { payload["reference_date"] = it.toString() }
-        request.postingDate?.let { payload["posting_date"] = it.toString() }
-        request.remarks?.let { payload["remarks"] = it }
-        payload.putAll(request.additionalFields)
-
-        return createResource("Payment Entry", payload, submit = true)
+    override fun createInteraction(): Interaction {
+        throw NotSupportedException("CCI Interaction is not used by this adapter")
     }
 
-    fun getDocument(doctype: String, name: String): ErpNextDocument {
-        val node = execute("read $doctype/$name") {
-            restClient.get()
-                .uri("/api/resource/{doctype}/{name}", doctype, name)
-                .retrieve()
-                .body(JsonNode::class.java)
-                ?: error("Empty ERPNext response while reading $doctype/$name")
+    override fun getLocalTransaction(): LocalTransaction {
+        throw NotSupportedException("Local transactions are managed by the application")
+    }
+
+    override fun getMetaData(): ConnectionMetaData = ErpNextConnectionMetaData(properties.baseUrl)
+
+    override fun getResultSetInfo(): ResultSetInfo {
+        throw NotSupportedException("ResultSetInfo is not supported by this adapter")
+    }
+
+    override fun close() {
+        closed = true
+    }
+
+    private fun ensureOpen() {
+        if (closed) {
+            throw ResourceException("ERPNext JCA connection is closed")
         }
-        return toDocument(requirePayload(node, "data"))
     }
 
     private fun findCustomerByName(customerName: String): ErpNextDocument? {
@@ -151,17 +140,11 @@ class ErpNextClient(
                 ?: error("Empty ERPNext response while searching Customer")
         }
         val data = requirePayload(response, "data")
-        if (!data.isArray || data.isEmpty) {
-            return null
-        }
+        if (!data.isArray || data.isEmpty) return null
         return toDocument(data[0])
     }
 
-    private fun createResource(
-        doctype: String,
-        payload: Map<String, Any?>,
-        submit: Boolean
-    ): ErpNextDocument {
+    private fun createResource(doctype: String, payload: Map<String, Any?>, submit: Boolean): ErpNextDocument {
         val created = execute("create $doctype") {
             restClient.post()
                 .uri("/api/resource/{doctype}", doctype)
@@ -172,15 +155,21 @@ class ErpNextClient(
         }
         val createdDoc = requirePayload(created, "data")
         val name = createdDoc.path("name").asText()
-        if (name.isBlank()) {
-            throw ErpNextClientException("ERPNext create $doctype returned blank document name")
-        }
-        if (!submit) {
-            return toDocument(createdDoc)
-        }
-
+        if (name.isBlank()) throw ErpNextIntegrationException("ERPNext create $doctype returned blank document name")
+        if (!submit) return toDocument(createdDoc)
         submitResource(doctype, name)
         return getDocument(doctype, name)
+    }
+
+    private fun getDocument(doctype: String, name: String): ErpNextDocument {
+        val node = execute("read $doctype/$name") {
+            restClient.get()
+                .uri("/api/resource/{doctype}/{name}", doctype, name)
+                .retrieve()
+                .body(JsonNode::class.java)
+                ?: error("Empty ERPNext response while reading $doctype/$name")
+        }
+        return toDocument(requirePayload(node, "data"))
     }
 
     private fun submitResource(doctype: String, name: String) {
@@ -198,23 +187,20 @@ class ErpNextClient(
             restClient.get()
                 .uri { builder ->
                     val withPath = builder.path("/api/method/{methodPath}")
-                    params.forEach { (key, value) ->
-                        value?.let { withPath.queryParam(key, it) }
-                    }
+                    params.forEach { (key, value) -> value?.let { withPath.queryParam(key, it) } }
                     withPath.build(methodPath)
                 }
                 .retrieve()
                 .body(JsonNode::class.java)
                 ?: error("Empty ERPNext response while calling $methodPath")
         }
-        val message = requirePayload(response, "message")
-        return nodeToMap(message)
+        return nodeToMap(requirePayload(response, "message"))
     }
 
     private fun sanitizeDocumentForInsert(document: Map<String, Any?>): Map<String, Any?> =
         when (val sanitized = sanitizeValue(document)) {
             is Map<*, *> -> sanitized.entries.associate { (key, value) -> key.toString() to value }
-            else -> throw ErpNextClientException("ERPNext mapped document has unexpected structure")
+            else -> throw ErpNextIntegrationException("ERPNext mapped document has unexpected structure")
         }
 
     private fun sanitizeValue(value: Any?): Any? =
@@ -223,14 +209,11 @@ class ErpNextClient(
                 val sanitized = LinkedHashMap<String, Any?>()
                 value.forEach { (key, nestedValue) ->
                     val keyString = key?.toString() ?: return@forEach
-                    if (keyString.startsWith("__") || keyString in INSERT_STRIP_KEYS) {
-                        return@forEach
-                    }
+                    if (keyString.startsWith("__") || keyString in INSERT_STRIP_KEYS) return@forEach
                     sanitized[keyString] = sanitizeValue(nestedValue)
                 }
                 sanitized
             }
-
             is List<*> -> value.map { sanitizeValue(it) }
             else -> value
         }
@@ -238,7 +221,7 @@ class ErpNextClient(
     private fun requirePayload(root: JsonNode, key: String): JsonNode {
         val payload = root.path(key)
         if (payload.isMissingNode || payload.isNull) {
-            throw ErpNextClientException("ERPNext response does not contain '$key'")
+            throw ErpNextIntegrationException("ERPNext response does not contain '$key'")
         }
         return payload
     }
@@ -271,9 +254,9 @@ class ErpNextClient(
                     append(responseBody)
                 }
             }
-            throw ErpNextClientException(message, ex)
+            throw ErpNextIntegrationException(message, ex)
         } catch (ex: Exception) {
-            throw ErpNextClientException("ERPNext $operation failed: ${ex.message}", ex)
+            throw ErpNextIntegrationException("ERPNext $operation failed: ${ex.message}", ex)
         }
 
     companion object {

@@ -1,6 +1,7 @@
 plugins {
     kotlin("jvm") version "2.2.21"
     kotlin("plugin.spring") version "2.2.21"
+    war
     id("org.springframework.boot") version "4.0.5"
     id("io.spring.dependency-management") version "1.1.7"
 }
@@ -20,6 +21,7 @@ repositories {
 }
 
 dependencies {
+    implementation("jakarta.resource:jakarta.resource-api:2.1.0")
     implementation("com.thoughtworks.xstream:xstream:1.4.21")
     implementation("org.glassfish.jaxb:jaxb-runtime:4.0.6")
     implementation("org.springframework.kafka:spring-kafka")
@@ -32,6 +34,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.boot:spring-boot-starter-json")
+    providedRuntime("org.springframework.boot:spring-boot-starter-tomcat")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly("org.postgresql:postgresql")
@@ -40,6 +43,15 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
+    enabled = false
+}
+
+tasks.named<org.springframework.boot.gradle.tasks.bundling.BootWar>("bootWar") {
+    enabled = true
+    archiveFileName.set("core-service.war")
 }
 
 kotlin {

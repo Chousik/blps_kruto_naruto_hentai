@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<connector xmlns="https://jakarta.ee/xml/ns/jakartaee"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="https://jakarta.ee/xml/ns/jakartaee https://jakarta.ee/xml/ns/jakartaee/connector_2_1.xsd"
+           version="2.1">
+    <display-name>ERPNext Resource Adapter</display-name>
+    <vendor-name>ru.chousik</vendor-name>
+    <eis-type>ERPNext</eis-type>
+    <resourceadapter-version>1.0</resourceadapter-version>
+    <resourceadapter>
+        <resourceadapter-class>ru.chousik.erpnext.ra.ErpNextResourceAdapter</resourceadapter-class>
+        <outbound-resourceadapter>
+            <connection-definition>
+                <managedconnectionfactory-class>ru.chousik.erpnext.ra.ErpNextManagedConnectionFactory</managedconnectionfactory-class>
+                <connectionfactory-interface>jakarta.resource.cci.ConnectionFactory</connectionfactory-interface>
+                <connectionfactory-impl-class>ru.chousik.erpnext.ra.ErpNextConnectionFactoryImpl</connectionfactory-impl-class>
+                <connection-interface>jakarta.resource.cci.Connection</connection-interface>
+                <connection-impl-class>ru.chousik.erpnext.ra.ErpNextConnectionImpl</connection-impl-class>
+            </connection-definition>
+            <transaction-support>NoTransaction</transaction-support>
+        </outbound-resourceadapter>
+    </resourceadapter>
+</connector>
