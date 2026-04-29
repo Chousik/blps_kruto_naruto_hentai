@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: core-service
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -10,19 +12,28 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/blps
-      DATABASE_USERNAME: blps
-      DATABASE_PASSWORD: blps
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-blps}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-blps}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      PAYMENT_REQUESTS_TOPIC: payment-requests
+      PAYMENT_REQUESTS_TOPIC: ${PAYMENT_REQUESTS_TOPIC:-payment-requests}
+      PAYMENT_URL_ASSIGNED_TOPIC: ${PAYMENT_URL_ASSIGNED_TOPIC:-payment-url-assigned}
+      ERPNEXT_BASE_URL: ${ERPNEXT_BASE_URL:-http://93.100.213.224:18080}
+      ERPNEXT_API_KEY: ${ERPNEXT_API_KEY:-bd37acd88af1ab0}
+      ERPNEXT_API_SECRET: ${ERPNEXT_API_SECRET:-13adb82443565e8}
+      ERPNEXT_COMPANY: ${ERPNEXT_COMPANY:-AirBNB}
+      ERPNEXT_SERVICE_ITEM_CODE: ${ERPNEXT_SERVICE_ITEM_CODE:-EXTRA_SERVICE}
     volumes:
-      - ./data/security:/app/data/security
+      - ./data/security:/opt/jboss/wildfly/data/blps
     ports:
       - "8433:8433"
+      - "127.0.0.1:9990:9990"
 
   payment-worker-service:
     build:
       context: ./payment-service
       dockerfile: Dockerfile
+    container_name: payment-worker-service
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
@@ -30,10 +41,11 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/blps
-      DATABASE_USERNAME: blps
-      DATABASE_PASSWORD: blps
+      DATABASE_USERNAME: ${DATABASE_USERNAME:-blps}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-blps}
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       PAYMENT_REQUESTS_TOPIC: payment-requests
+      PAYMENT_URL_ASSIGNED_TOPIC: ${PAYMENT_URL_ASSIGNED_TOPIC:-payment-url-assigned}
       YOOKASSA_SHOP_ID: ${YOOKASSA_SHOP_ID:-1330376}
       YOOKASSA_SECRET_KEY: ${YOOKASSA_SECRET_KEY:-test_d8oiGRjqStOET2aRBN9XuJUkXLQo3yFXDktAIr9lwHk}
       YOOKASSA_API_URL: ${YOOKASSA_API_URL:-https://api.yookassa.ru/v3}
@@ -49,8 +61,6 @@ services:
       POSTGRES_DB: blps
       POSTGRES_USER: blps
       POSTGRES_PASSWORD: blps
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -66,8 +76,6 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
 
   kafka:
     image: confluentinc/cp-kafka:7.5.0
@@ -75,24 +83,21 @@ services:
     restart: unless-stopped
     depends_on:
       - zookeeper
-    ports:
-      - "9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:29092 --list >/dev/null 2>&1"]
       interval: 10s
       timeout: 10s
       retries: 10
 
 volumes:
   postgres-data:
-    driver: local
