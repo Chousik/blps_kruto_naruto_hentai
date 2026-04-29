@@ -1,6 +1,6 @@
-package ru.chousik.kt_blps.service
+package ru.chousik.kt_blps.jca.erpnext
 
-class ErpNextClientException(
+class ErpNextIntegrationException(
     message: String,
     cause: Throwable? = null
 ) : RuntimeException(message, cause)
