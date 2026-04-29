@@ -2,7 +2,6 @@ package ru.chousik.payment_worker_service.service
 
 import java.nio.charset.StandardCharsets
 import java.util.Base64
-import java.util.UUID
 import org.springframework.http.HttpHeaders
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
@@ -20,11 +19,11 @@ class YooKassaClient(
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .build()
 
-    fun createPayment(request: YooKassaCreatePaymentRequest): YooKassaCreatePaymentResponse {
+    fun createPayment(idempotenceKey: String, request: YooKassaCreatePaymentRequest): YooKassaCreatePaymentResponse {
         return client.post()
             .uri("/payments")
             .header(HttpHeaders.AUTHORIZATION, buildAuthorizationHeader())
-            .header("Idempotence-Key", UUID.randomUUID().toString())
+            .header("Idempotence-Key", idempotenceKey)
             .body(request)
             .retrieve()
             .body(YooKassaCreatePaymentResponse::class.java)
