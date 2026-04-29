@@ -10,7 +10,7 @@ class PaymentUrlAssignedConsumerService(
     private val objectMapper: ObjectMapper,
     private val erpNextSyncService: ErpNextSyncService
 ) {
-    @KafkaListener(topics = ["\${app.kafka.payment-url-assigned-topic}"])
+    @KafkaListener(topics = ["\${app.payment-reminders.payment-url-assigned-topic}"])
     fun consume(payload: String) {
         val event = objectMapper.readValue(payload, PaymentUrlAssignedEvent::class.java)
         erpNextSyncService.syncSalesInvoiceForExtraService(event.extraServiceRequestId)
