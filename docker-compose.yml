@@ -30,8 +30,8 @@ services:
 
   payment-worker-service:
     build:
-      context: ./payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: payment-service/Dockerfile
     container_name: payment-worker-service
     restart: unless-stopped
     depends_on:
@@ -52,7 +52,6 @@ services:
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-https://youtube.com}
     ports:
       - "8434:8434"
-
   postgres:
     image: postgres:16-alpine
     container_name: blps-db

@@ -1,9 +1,11 @@
 FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /workspace
 
-COPY gradlew build.gradle.kts settings.gradle.kts ./
+COPY gradlew ./gradlew
 COPY gradle ./gradle
-COPY src ./src
+COPY payment-service/build.gradle.kts ./build.gradle.kts
+COPY payment-service/settings.gradle.kts ./settings.gradle.kts
+COPY payment-service/src ./src
 
 RUN chmod +x ./gradlew
 RUN ./gradlew --no-daemon bootJar && \
