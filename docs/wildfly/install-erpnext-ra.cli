@@ -1,0 +1,22 @@
+# Deploy ERPNext Resource Adapter and register its ConnectionFactory in WildFly.
+#
+# Usage:
+#   export ERPNEXT_BASE_URL=http://localhost:18080
+#   export ERPNEXT_API_KEY=...
+#   export ERPNEXT_API_SECRET=...
+#   export ERPNEXT_RA_RAR=/absolute/path/to/erpnext-ra/build/distributions/erpnext-ra-0.0.1-SNAPSHOT.rar
+#   $WILDFLY_HOME/bin/jboss-cli.sh --connect --file=docs/wildfly/install-erpnext-ra.cli
+#
+# Notes:
+# - Run this after WildFly has already started.
+# - Re-running is safe because the script removes the old definition first if it exists.
+
+if (outcome == success) of /subsystem=resource-adapters/resource-adapter=erpnext-ra.rar:read-resource
+    /subsystem=resource-adapters/resource-adapter=erpnext-ra.rar:remove
+end-if
+
+if (outcome == success) of /deployment=erpnext-ra.rar:read-resource
+    undeploy erpnext-ra.rar
+end-if
+
+deploy ${env.ERPNEXT_RA_RAR} --name=erpnext-ra.rar

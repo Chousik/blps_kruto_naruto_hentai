@@ -495,10 +495,12 @@
   let receiptHandlers = new Map();
 
   const DEPLOYMENT_BASE_URL = "https://fixly-meow.ru:8443";
+  const currentPath = window.location.pathname.replace(/\/[^/]*$/, "");
+  const inferredContextPath = currentPath === "/" ? "" : currentPath;
 
   ui.baseUrl.value = /^https?:\/\//.test(window.location.origin)
-    ? window.location.origin
-    : DEPLOYMENT_BASE_URL;
+    ? `${window.location.origin}${inferredContextPath}`
+    : `${DEPLOYMENT_BASE_URL}${inferredContextPath}`;
 
   function pretty(value) {
     if (typeof value === "string") {

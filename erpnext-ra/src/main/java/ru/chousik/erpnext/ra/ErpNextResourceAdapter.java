@@ -5,6 +5,7 @@ import jakarta.resource.spi.ActivationSpec;
 import jakarta.resource.spi.BootstrapContext;
 import jakarta.resource.spi.ResourceAdapter;
 import jakarta.resource.spi.ResourceAdapterInternalException;
+import java.util.Objects;
 import javax.transaction.xa.XAResource;
 
 public class ErpNextResourceAdapter implements ResourceAdapter {
@@ -30,5 +31,15 @@ public class ErpNextResourceAdapter implements ResourceAdapter {
     @Override
     public XAResource[] getXAResources(ActivationSpec[] activationSpecs) throws ResourceException {
         return new XAResource[0];
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(ErpNextResourceAdapter.class);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj != null && getClass() == obj.getClass();
     }
 }

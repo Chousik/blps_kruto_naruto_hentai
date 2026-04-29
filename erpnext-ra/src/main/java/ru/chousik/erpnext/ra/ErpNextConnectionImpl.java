@@ -31,7 +31,10 @@ public class ErpNextConnectionImpl implements Connection, Serializable {
 
     @Override
     public Interaction createInteraction() throws ResourceException {
-        throw new NotSupportedException("CCI Interaction is not used");
+        if (closed) {
+            throw new ResourceException("Connection is closed");
+        }
+        return new ErpNextInteraction(this, baseUrl, apiKey, apiSecret);
     }
 
     @Override
@@ -54,7 +57,7 @@ public class ErpNextConnectionImpl implements Connection, Serializable {
 
             @Override
             public String getUserName() {
-                return "token";
+                return "token@" + safeHost();
             }
         };
     }
@@ -82,5 +85,13 @@ public class ErpNextConnectionImpl implements Connection, Serializable {
 
     public String getApiSecret() {
         return apiSecret;
+    }
+
+    private String safeHost() {
+        try {
+            return java.net.URI.create(baseUrl).getHost();
+        } catch (Exception ignored) {
+            return "erpnext";
+        }
     }
 }

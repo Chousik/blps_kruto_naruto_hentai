@@ -20,6 +20,12 @@ repositories {
     mavenCentral()
 }
 
+configurations.configureEach {
+    exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
+    exclude(group = "ch.qos.logback", module = "logback-classic")
+    exclude(group = "ch.qos.logback", module = "logback-core")
+}
+
 dependencies {
     implementation("jakarta.resource:jakarta.resource-api:2.1.0")
     implementation("com.thoughtworks.xstream:xstream:1.4.21")
@@ -31,10 +37,13 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation("org.springframework.boot:spring-boot-starter-webmvc") {
+        exclude(group = "org.springframework.boot", module = "spring-boot-starter-tomcat")
+    }
+    implementation("org.springframework.boot:spring-boot-starter-websocket") {
+        exclude(group = "org.springframework.boot", module = "spring-boot-starter-tomcat")
+    }
     implementation("org.springframework.boot:spring-boot-starter-json")
-    providedRuntime("org.springframework.boot:spring-boot-starter-tomcat")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     runtimeOnly("org.postgresql:postgresql")
@@ -50,6 +59,10 @@ tasks.named<org.springframework.boot.gradle.tasks.bundling.BootJar>("bootJar") {
 }
 
 tasks.named<org.springframework.boot.gradle.tasks.bundling.BootWar>("bootWar") {
+    enabled = false
+}
+
+tasks.named<War>("war") {
     enabled = true
     archiveFileName.set("core-service.war")
 }

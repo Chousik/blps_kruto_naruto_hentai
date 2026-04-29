@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ironjacamar xmlns="http://www.jboss.org/ironjacamar/schema"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.jboss.org/ironjacamar/schema http://www.jboss.org/ironjacamar/schema/ironjacamar_1_0.xsd">
+    <transaction-support>NoTransaction</transaction-support>
+    <connection-definitions>
+        <connection-definition class-name="ru.chousik.erpnext.ra.ErpNextManagedConnectionFactory"
+                               jndi-name="java:/eis/ErpNextCF"
+                               enabled="true"
+                               use-java-context="true"
+                               pool-name="ErpNextCF">
+            <config-property name="BaseUrl">${env.ERPNEXT_BASE_URL}</config-property>
+            <config-property name="ApiKey">${env.ERPNEXT_API_KEY}</config-property>
+            <config-property name="ApiSecret">${env.ERPNEXT_API_SECRET}</config-property>
+            <pool>
+                <min-pool-size>0</min-pool-size>
+                <max-pool-size>20</max-pool-size>
+            </pool>
+        </connection-definition>
+    </connection-definitions>
+</ironjacamar>

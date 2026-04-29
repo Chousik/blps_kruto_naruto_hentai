@@ -11,8 +11,7 @@ import ru.chousik.kt_blps.config.ErpNextProperties
 import ru.chousik.kt_blps.dto.erpnext.ErpNextCustomerRequest
 import ru.chousik.kt_blps.dto.erpnext.ErpNextQuotationItemRequest
 import ru.chousik.kt_blps.dto.erpnext.ErpNextQuotationRequest
-import ru.chousik.kt_blps.jca.erpnext.ErpNextJcaConnection
-import ru.chousik.kt_blps.jca.erpnext.ErpNextJcaConnectionFactory
+import ru.chousik.kt_blps.jca.erpnext.ErpNextJcaClient
 import ru.chousik.kt_blps.jca.erpnext.ErpNextIntegrationException
 import ru.chousik.kt_blps.model.ExtraServiceRequest
 import ru.chousik.kt_blps.model.User
@@ -21,7 +20,7 @@ import ru.chousik.kt_blps.repository.UserRepository
 
 @Service
 class ErpNextSyncService(
-    private val erpNextConnectionFactory: ErpNextJcaConnectionFactory,
+    private val erpNextClient: ErpNextJcaClient,
     private val erpNextProperties: ErpNextProperties,
     private val userRepository: UserRepository,
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
@@ -47,101 +46,7 @@ class ErpNextSyncService(
             ensureCustomer(extraService.chat.host)
             val guestCustomer = ensureCustomer(extraService.chat.guest)
 
-            val quotation = withConnection { connection ->
-                connection.createQuotation(
-                    ErpNextQuotationRequest(
-                        company = requireCompany(),
-                        partyName = guestCustomer.erpCustomerId!!,
-                        transactionDate = extraService.createdAt.toLocalDate(),
-                        items = listOf(
-                            ErpNextQuotationItemRequest(
-                                itemCode = requireServiceItemCode(),
-                                qty = BigDecimal.ONE,
-                                rate = extraService.amount,
-                                description = buildServiceDescription(extraService)
-                            )
-                        ),
-                        additionalFields = mapOf(
-                            "custom_blps_extra_service_id" to extraService.id.toString(),
-                            "custom_blps_chat_id" to extraService.chat.id.toString(),
-                            "custom_blps_host_user_id" to extraService.chat.host.id.toString(),
-                            "custom_blps_guest_user_id" to extraService.chat.guest.id.toString()
-                        )
-                    )
-                )
-            }
-
-            extraService.erpQuotationId = quotation.name
-            extraServiceRequestRepository.save(extraService)
-        }
-    }
-
-    fun syncSalesOrderForAcceptedExtraService(extraServiceId: UUID) {
-        writeTransactionTemplate.executeWithoutResult {
-            val extraService = loadExtraService(extraServiceId)
-            if (!extraService.erpSalesOrderId.isNullOrBlank()) {
-                return@executeWithoutResult
-            }
-            ensureQuotation(extraService)
-            val salesOrder = withConnection { connection ->
-                connection.createSalesOrderFromQuotation(
-                    extraService.erpQuotationId!!,
-                    resolveDeliveryDate(extraService)
-                )
-            }
-            extraService.erpSalesOrderId = salesOrder.name
-            extraServiceRequestRepository.save(extraService)
-        }
-    }
-
-    fun syncSalesInvoiceForExtraService(extraServiceId: UUID) {
-        writeTransactionTemplate.executeWithoutResult {
-            val extraService = loadExtraService(extraServiceId)
-            if (!extraService.erpSalesInvoiceId.isNullOrBlank()) {
-                return@executeWithoutResult
-            }
-            ensureSalesOrder(extraService)
-            val salesInvoice = withConnection { connection ->
-                connection.createSalesInvoiceFromSalesOrder(extraService.erpSalesOrderId!!)
-            }
-            extraService.erpSalesInvoiceId = salesInvoice.name
-            extraServiceRequestRepository.save(extraService)
-        }
-    }
-
-    private fun ensureCustomer(user: User): User {
-        if (!user.erpCustomerId.isNullOrBlank()) {
-            return user
-        }
-
-        val customer = withConnection { connection ->
-            connection.ensureCustomer(
-                ErpNextCustomerRequest(
-                    customerName = buildCustomerName(user),
-                    customerGroup = "Individual",
-                    territory = "All Territories",
-                    additionalFields = mapOf(
-                        "custom_blps_user_id" to user.id.toString(),
-                        "custom_blps_role" to user.role.name
-                    )
-                )
-            )
-        }
-
-        user.erpCustomerId = customer.name
-        return userRepository.save(user)
-    }
-
-    private fun ensureQuotation(extraService: ExtraServiceRequest) {
-        if (!extraService.erpQuotationId.isNullOrBlank()) {
-            return
-        }
-
-        ensureCustomer(extraService.chat.host)
-        val guestCustomer = ensureCustomer(extraService.chat.guest)
-
-        val quotation = withConnection { connection ->
-            connection.createQuotation(
+            val quotation = erpNextClient.createQuotation(
                 ErpNextQuotationRequest(
                     company = requireCompany(),
                     partyName = guestCustomer.erpCustomerId!!,
@@ -162,7 +67,91 @@ class ErpNextSyncService(
                     )
                 )
             )
+
+            extraService.erpQuotationId = quotation.name
+            extraServiceRequestRepository.save(extraService)
         }
+    }
+
+    fun syncSalesOrderForAcceptedExtraService(extraServiceId: UUID) {
+        writeTransactionTemplate.executeWithoutResult {
+            val extraService = loadExtraService(extraServiceId)
+            if (!extraService.erpSalesOrderId.isNullOrBlank()) {
+                return@executeWithoutResult
+            }
+            ensureQuotation(extraService)
+            val salesOrder = erpNextClient.createSalesOrderFromQuotation(
+                extraService.erpQuotationId!!,
+                resolveDeliveryDate(extraService)
+            )
+            extraService.erpSalesOrderId = salesOrder.name
+            extraServiceRequestRepository.save(extraService)
+        }
+    }
+
+    fun syncSalesInvoiceForExtraService(extraServiceId: UUID) {
+        writeTransactionTemplate.executeWithoutResult {
+            val extraService = loadExtraService(extraServiceId)
+            if (!extraService.erpSalesInvoiceId.isNullOrBlank()) {
+                return@executeWithoutResult
+            }
+            ensureSalesOrder(extraService)
+            val salesInvoice = erpNextClient.createSalesInvoiceFromSalesOrder(extraService.erpSalesOrderId!!)
+            extraService.erpSalesInvoiceId = salesInvoice.name
+            extraServiceRequestRepository.save(extraService)
+        }
+    }
+
+    private fun ensureCustomer(user: User): User {
+        if (!user.erpCustomerId.isNullOrBlank()) {
+            return user
+        }
+
+        val customer = erpNextClient.ensureCustomer(
+            ErpNextCustomerRequest(
+                customerName = buildCustomerName(user),
+                customerGroup = "Individual",
+                territory = "All Territories",
+                additionalFields = mapOf(
+                    "custom_blps_user_id" to user.id.toString(),
+                    "custom_blps_role" to user.role.name
+                )
+            )
+        )
+
+        user.erpCustomerId = customer.name
+        return userRepository.save(user)
+    }
+
+    private fun ensureQuotation(extraService: ExtraServiceRequest) {
+        if (!extraService.erpQuotationId.isNullOrBlank()) {
+            return
+        }
+
+        ensureCustomer(extraService.chat.host)
+        val guestCustomer = ensureCustomer(extraService.chat.guest)
+
+        val quotation = erpNextClient.createQuotation(
+            ErpNextQuotationRequest(
+                company = requireCompany(),
+                partyName = guestCustomer.erpCustomerId!!,
+                transactionDate = extraService.createdAt.toLocalDate(),
+                items = listOf(
+                    ErpNextQuotationItemRequest(
+                        itemCode = requireServiceItemCode(),
+                        qty = BigDecimal.ONE,
+                        rate = extraService.amount,
+                        description = buildServiceDescription(extraService)
+                    )
+                ),
+                additionalFields = mapOf(
+                    "custom_blps_extra_service_id" to extraService.id.toString(),
+                    "custom_blps_chat_id" to extraService.chat.id.toString(),
+                    "custom_blps_host_user_id" to extraService.chat.host.id.toString(),
+                    "custom_blps_guest_user_id" to extraService.chat.guest.id.toString()
+                )
+            )
+        )
 
         extraService.erpQuotationId = quotation.name
         extraServiceRequestRepository.save(extraService)
@@ -173,12 +162,10 @@ class ErpNextSyncService(
             return
         }
         ensureQuotation(extraService)
-        val salesOrder = withConnection { connection ->
-            connection.createSalesOrderFromQuotation(
-                extraService.erpQuotationId!!,
-                resolveDeliveryDate(extraService)
-            )
-        }
+        val salesOrder = erpNextClient.createSalesOrderFromQuotation(
+            extraService.erpQuotationId!!,
+            resolveDeliveryDate(extraService)
+        )
         extraService.erpSalesOrderId = salesOrder.name
         extraServiceRequestRepository.save(extraService)
     }
@@ -220,12 +207,4 @@ class ErpNextSyncService(
             throw ErpNextIntegrationException("ERPNext service item code is not configured")
         }
 
-    private fun <T> withConnection(block: (ErpNextJcaConnection) -> T): T {
-        val connection = erpNextConnectionFactory.getConnection() as ErpNextJcaConnection
-        try {
-            return block(connection)
-        } finally {
-            connection.close()
-        }
-    }
 }
