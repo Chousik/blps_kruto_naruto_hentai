@@ -2,10 +2,13 @@ package ru.chousik.payment_worker_service.service
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import java.time.OffsetDateTime
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.kafka.annotation.KafkaListener
+import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import ru.chousik.payment_worker_service.dto.payment.YooKassaCreatePaymentRequest
+import ru.chousik.payment_worker_service.event.PaymentUrlAssignedEvent
 import ru.chousik.payment_worker_service.event.PaymentRequestCreatedEvent
 import ru.chousik.payment_worker_service.model.PaymentRequestStatus
 import ru.chousik.payment_worker_service.repository.PaymentRequestRepository
@@ -14,9 +17,11 @@ import ru.chousik.payment_worker_service.repository.PaymentRequestRepository
 class PaymentRequestConsumerService(
     private val objectMapper: ObjectMapper,
     private val paymentRequestRepository: PaymentRequestRepository,
-    private val yooKassaClient: YooKassaClient
+    private val yooKassaClient: YooKassaClient,
+    private val kafkaTemplate: KafkaTemplate<String, String>,
+    @Value("\${app.kafka.payment-url-assigned-topic}")
+    private val paymentUrlAssignedTopic: String
 ) {
-
     @KafkaListener(topics = ["\${app.kafka.payment-topic}"])
     @Transactional
     fun consume(payload: String) {
@@ -25,6 +30,9 @@ class PaymentRequestConsumerService(
             .orElseThrow { IllegalStateException("payment request not found") }
 
         if (!payment.providerPaymentId.isNullOrBlank()) {
+            if (!payment.paymentUrl.isNullOrBlank()) {
+                publishPaymentUrlAssignedEvent(payment.id, payment.extraServiceRequestId)
+            }
             return
         }
 
@@ -57,5 +65,16 @@ class PaymentRequestConsumerService(
         payment.expiresAt = OffsetDateTime.now().plusHours(1)
         payment.resolvedAt = null
         paymentRequestRepository.save(payment)
+
+        publishPaymentUrlAssignedEvent(payment.id, payment.extraServiceRequestId)
+    }
+
+    private fun publishPaymentUrlAssignedEvent(paymentRequestId: java.util.UUID, extraServiceRequestId: java.util.UUID) {
+        val assignedEvent = PaymentUrlAssignedEvent(
+            paymentRequestId = paymentRequestId,
+            extraServiceRequestId = extraServiceRequestId
+        )
+        val eventPayload = objectMapper.writeValueAsString(assignedEvent)
+        kafkaTemplate.send(paymentUrlAssignedTopic, paymentRequestId.toString(), eventPayload).get()
     }
 }

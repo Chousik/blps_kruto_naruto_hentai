@@ -43,6 +43,8 @@ class ExtraServiceRequestService(
     private val chatSystemMessageService: ChatSystemMessageService,
     private val kafkaTemplate: KafkaTemplate<String, String>,
     private val objectMapper: ObjectMapper,
+    private val erpNextSyncService: ErpNextSyncService,
+    private val afterCommitExecutor: AfterCommitExecutor,
     @Value("\${app.kafka.payment-topic}")
     private val paymentTopic: String,
     @Qualifier("writeTransactionTemplate")
@@ -79,6 +81,9 @@ class ExtraServiceRequestService(
             chat = chat,
             message = "Host proposed extra service '${saved.title}' for ${saved.amount} ${saved.currency}."
         )
+        afterCommitExecutor.run("erp quotation sync for extra service ${saved.id}") {
+            erpNextSyncService.syncQuotationForExtraService(saved.id)
+        }
         ExtraServiceRequestResponseDTO.from(saved)
     }
 
@@ -241,6 +246,9 @@ class ExtraServiceRequestService(
             chat = service.chat,
             message = "Guest accepted extra service '${savedService.title}'. Payment request queued for processing."
         )
+        afterCommitExecutor.run("erp sales order sync for accepted extra service ${savedService.id}") {
+            erpNextSyncService.syncSalesOrderForAcceptedExtraService(savedService.id)
+        }
 
         return ExtraServiceDecisionResponse(
             extraService = ExtraServiceRequestResponseDTO.from(savedService),
