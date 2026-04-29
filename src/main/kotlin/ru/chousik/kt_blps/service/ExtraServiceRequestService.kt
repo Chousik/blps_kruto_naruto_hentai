@@ -116,11 +116,17 @@ class ExtraServiceRequestService(
             val requester = loadUser(requesterId)
             ensureParticipantOrAdmin(service.chat, requester)
 
-            val payment = paymentRequestRepository.
-            findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
+            val payment = paymentRequestRepository
+                .findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
                 ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "payment request not found for extra service")
 
-            PaymentRequestView.from(payment)
+            val view = PaymentRequestView.from(payment)
+            val expiresAt = payment.expiresAt
+            if (expiresAt != null && !expiresAt.isAfter(OffsetDateTime.now())) {
+                view.copy(paymentUrl = null)
+            } else {
+                view
+            }
         }
 
     fun updateExtraService(
