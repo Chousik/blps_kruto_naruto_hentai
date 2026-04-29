@@ -75,18 +75,6 @@ public class ErpNextConnectionImpl implements Connection, Serializable {
         }
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public String getApiKey() {
-        return apiKey;
-    }
-
-    public String getApiSecret() {
-        return apiSecret;
-    }
-
     private String safeHost() {
         try {
             return java.net.URI.create(baseUrl).getHost();

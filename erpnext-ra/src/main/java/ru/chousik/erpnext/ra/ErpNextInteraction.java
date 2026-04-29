@@ -1,5 +1,6 @@
 package ru.chousik.erpnext.ra;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class ErpNextInteraction implements Interaction {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final List<String> INSERT_STRIP_KEYS = List.of(
@@ -45,7 +47,6 @@ public class ErpNextInteraction implements Interaction {
         .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private boolean closed;
-    private ResourceWarning warning;
 
     public ErpNextInteraction(ErpNextConnectionImpl connection, String baseUrl, String apiKey, String apiSecret) {
         this.connection = connection;
@@ -104,12 +105,11 @@ public class ErpNextInteraction implements Interaction {
 
     @Override
     public ResourceWarning getWarnings() {
-        return warning;
+        return null;
     }
 
     @Override
     public void clearWarnings() {
-        warning = null;
     }
 
     private void ensureOpen() throws ResourceException {
@@ -217,7 +217,7 @@ public class ErpNextInteraction implements Interaction {
                 return null;
             }
             return nodeToMap(data.get(0));
-        } catch (IOException ex) {
+        } catch (JsonProcessingException ex) {
             throw new ResourceException("Failed to serialize ERPNext query", ex);
         }
     }
@@ -314,17 +314,18 @@ public class ErpNextInteraction implements Interaction {
     private URI buildUri(String path, Map<String, String> queryParams) {
         StringBuilder query = new StringBuilder();
         for (Map.Entry<String, String> entry : queryParams.entrySet()) {
-            if (query.length() > 0) {
+            if (!query.isEmpty()) {
                 query.append('&');
             }
             query.append(URLEncoder.encode(entry.getKey(), StandardCharsets.UTF_8));
             query.append('=');
             query.append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8));
         }
-        String uri = baseUrl + path + (query.length() == 0 ? "" : "?" + query);
+        String uri = baseUrl + path + (query.isEmpty() ? "" : "?" + query);
         return URI.create(uri);
     }
 
+    @SuppressWarnings("unchecked")
     private MappedRecord documentRecord(Map<String, Object> document) {
         SimpleMappedRecord record = new SimpleMappedRecord("erpnextDocument");
         record.put("doctype", document.getOrDefault("doctype", "").toString());

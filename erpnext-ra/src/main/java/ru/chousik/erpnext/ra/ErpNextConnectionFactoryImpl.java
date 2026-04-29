@@ -1,6 +1,5 @@
 package ru.chousik.erpnext.ra;
 
-import jakarta.resource.NotSupportedException;
 import jakarta.resource.ResourceException;
 import jakarta.resource.cci.Connection;
 import jakarta.resource.cci.ConnectionFactory;

@@ -15,15 +15,13 @@ import javax.security.auth.Subject;
 import javax.transaction.xa.XAResource;
 
 public class ErpNextManagedConnection implements ManagedConnection {
-    private final ErpNextManagedConnectionFactory mcf;
     private final String baseUrl;
     private final String apiKey;
     private final String apiSecret;
     private final List<ConnectionEventListener> listeners = new ArrayList<>();
     private PrintWriter logWriter;
 
-    public ErpNextManagedConnection(ErpNextManagedConnectionFactory mcf, String baseUrl, String apiKey, String apiSecret) {
-        this.mcf = mcf;
+    public ErpNextManagedConnection(String baseUrl, String apiKey, String apiSecret) {
         this.baseUrl = baseUrl;
         this.apiKey = apiKey;
         this.apiSecret = apiSecret;

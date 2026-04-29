@@ -4,6 +4,7 @@ import jakarta.resource.cci.IndexedRecord;
 import java.io.Serializable;
 import java.util.ArrayList;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleIndexedRecord extends ArrayList implements IndexedRecord, Serializable {
     private String recordName;
     private String shortDescription;

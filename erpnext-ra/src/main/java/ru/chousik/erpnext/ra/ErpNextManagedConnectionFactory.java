@@ -25,7 +25,9 @@ public class ErpNextManagedConnectionFactory implements ManagedConnectionFactory
 
     @Override
     public Object createConnectionFactory() throws ResourceException {
-        return new ErpNextConnectionFactoryImpl(this, new ErpNextConnectionManager());
+        throw new ResourceException(
+            "Standalone ERPNext ConnectionFactory is not supported; use a container-managed ConnectionManager"
+        );
     }
 
     @Override
@@ -39,7 +41,7 @@ public class ErpNextManagedConnectionFactory implements ManagedConnectionFactory
         requireConfigured("ApiKey", resolvedApiKey);
         requireConfigured("ApiSecret", resolvedApiSecret);
 
-        return new ErpNextManagedConnection(this, resolvedBaseUrl, resolvedApiKey, resolvedApiSecret);
+        return new ErpNextManagedConnection(resolvedBaseUrl, resolvedApiKey, resolvedApiSecret);
     }
 
     @Override

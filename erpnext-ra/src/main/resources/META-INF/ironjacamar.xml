@@ -9,7 +9,7 @@
                                enabled="true"
                                use-java-context="true"
                                pool-name="ErpNextCF">
-            <config-property name="BaseUrl">${env.ERPNEXT_BASE_URL}</config-property>
+            <config-property name="BaseUrl">http://localhost</config-property>
             <config-property name="ApiKey">${env.ERPNEXT_API_KEY}</config-property>
             <config-property name="ApiSecret">${env.ERPNEXT_API_SECRET}</config-property>
             <pool>

@@ -4,6 +4,7 @@ import jakarta.resource.cci.MappedRecord;
 import java.io.Serializable;
 import java.util.LinkedHashMap;
 
+@SuppressWarnings({"rawtypes", "unchecked"})
 public class SimpleMappedRecord extends LinkedHashMap implements MappedRecord, Serializable {
     private String recordName;
     private String shortDescription;
