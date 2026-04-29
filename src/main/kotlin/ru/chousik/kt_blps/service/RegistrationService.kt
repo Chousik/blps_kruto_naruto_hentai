@@ -19,7 +19,9 @@ import ru.chousik.kt_blps.security.XmlAccountRegistry
 class RegistrationService(
     private val userRepository: UserRepository,
     private val xmlAccountRegistry: XmlAccountRegistry,
-    private val passwordEncoder: PasswordEncoder
+    private val passwordEncoder: PasswordEncoder,
+    private val erpNextSyncService: ErpNextSyncService,
+    private val afterCommitExecutor: AfterCommitExecutor
 ) {
 
     fun register(request: RegisterRequest): RegisterResponse {
@@ -72,6 +74,10 @@ class RegistrationService(
         } catch (ex: Exception) {
             rollbackUser(savedUser.id, ex)
             throw ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "failed to create auth account", ex)
+        }
+
+        afterCommitExecutor.run("erp customer sync for user ${savedUser.id}") {
+            erpNextSyncService.syncCustomerForUser(savedUser.id)
         }
 
         return RegisterResponse.from(savedUser)

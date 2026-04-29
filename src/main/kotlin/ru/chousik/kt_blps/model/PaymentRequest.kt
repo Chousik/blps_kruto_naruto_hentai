@@ -45,6 +45,10 @@ class PaymentRequest {
     @Column(name = "payment_url", length = 2000)
     var paymentUrl: String? = null
 
+    @field:Size(max = 140)
+    @Column(name = "erp_payment_entry_id", unique = true, length = 140)
+    var erpPaymentEntryId: String? = null
+
     @field:NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
