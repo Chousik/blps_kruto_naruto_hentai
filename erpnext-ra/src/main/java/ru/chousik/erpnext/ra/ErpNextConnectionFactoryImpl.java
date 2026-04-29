@@ -13,9 +13,13 @@ import javax.naming.Reference;
 import java.io.Serializable;
 
 public class ErpNextConnectionFactoryImpl implements ConnectionFactory, Serializable {
-    private final ErpNextManagedConnectionFactory mcf;
-    private final ConnectionManager connectionManager;
+    private ErpNextManagedConnectionFactory mcf;
+    private ConnectionManager connectionManager;
+    private final RecordFactory recordFactory = new SimpleRecordFactory();
     private Reference reference;
+
+    public ErpNextConnectionFactoryImpl() {
+    }
 
     public ErpNextConnectionFactoryImpl(ErpNextManagedConnectionFactory mcf, ConnectionManager connectionManager) {
         this.mcf = mcf;
@@ -67,12 +71,12 @@ public class ErpNextConnectionFactoryImpl implements ConnectionFactory, Serializ
 
             @Override
             public boolean supportsExecuteWithInputAndOutputRecord() {
-                return false;
+                return true;
             }
 
             @Override
             public boolean supportsExecuteWithInputRecordOnly() {
-                return false;
+                return true;
             }
 
             @Override
@@ -84,7 +88,7 @@ public class ErpNextConnectionFactoryImpl implements ConnectionFactory, Serializ
 
     @Override
     public RecordFactory getRecordFactory() throws ResourceException {
-        throw new NotSupportedException("RecordFactory not supported");
+        return recordFactory;
     }
 
     @Override

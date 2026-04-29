@@ -12,6 +12,18 @@
         <outbound-resourceadapter>
             <connection-definition>
                 <managedconnectionfactory-class>ru.chousik.erpnext.ra.ErpNextManagedConnectionFactory</managedconnectionfactory-class>
+                <config-property>
+                    <config-property-name>BaseUrl</config-property-name>
+                    <config-property-type>java.lang.String</config-property-type>
+                </config-property>
+                <config-property>
+                    <config-property-name>ApiKey</config-property-name>
+                    <config-property-type>java.lang.String</config-property-type>
+                </config-property>
+                <config-property>
+                    <config-property-name>ApiSecret</config-property-name>
+                    <config-property-type>java.lang.String</config-property-type>
+                </config-property>
                 <connectionfactory-interface>jakarta.resource.cci.ConnectionFactory</connectionfactory-interface>
                 <connectionfactory-impl-class>ru.chousik.erpnext.ra.ErpNextConnectionFactoryImpl</connectionfactory-impl-class>
                 <connection-interface>jakarta.resource.cci.Connection</connection-interface>

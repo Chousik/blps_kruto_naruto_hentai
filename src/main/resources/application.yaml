@@ -35,10 +35,8 @@ app:
     fixed-delay-ms: ${PAYMENT_REMINDER_SCHEDULER_DELAY_MS:30000}
     payment-url-assigned-topic: ${PAYMENT_URL_ASSIGNED_TOPIC:payment-url-assigned}
 erpnext:
-  base-url: ${ERPNEXT_BASE_URL:http://93.100.213.224:18080}
-  api-key: ${ERPNEXT_API_KEY:bd37acd88af1ab0}
-  api-secret: ${ERPNEXT_API_SECRET:13adb82443565e8}
   company: ${ERPNEXT_COMPANY:AirBNB}
   service-item-code: ${ERPNEXT_SERVICE_ITEM_CODE:EXTRA_SERVICE}
+  jndi-name: ${ERPNEXT_JNDI_NAME:java:/eis/ErpNextCF}
 server:
   port: 8433

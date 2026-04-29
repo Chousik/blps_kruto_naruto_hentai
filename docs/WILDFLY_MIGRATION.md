@@ -47,13 +47,13 @@ Move these to WildFly/JNDI/env:
 2. Kafka bootstrap and consumer/producer props
 3. ERP JCA CF JNDI name (`java:/eis/ErpNextCF`)
 
-In app, read them from env/JNDI instead of hardcoded local defaults.
+In app, use only WildFly JNDI lookup for ERP access.
 
 ## 5. Wire core-service to JNDI ConnectionFactory
 
-1. Replace direct Spring bean factory for ERP CF with JNDI lookup bean:
-   - lookup `java:/eis/ErpNextCF`
-2. `ErpNextSyncService` continues to use `ConnectionFactory.getConnection()`.
+1. `core-service` resolves ERP `ConnectionFactory` only from JNDI:
+   - `ERPNEXT_JNDI_NAME=java:/eis/ErpNextCF`
+2. `ErpNextSyncService` uses standard CCI `ConnectionFactory`/`Connection`/`Interaction`/`Record`.
 
 ## 6. Transaction model
 
@@ -76,10 +76,16 @@ Implications:
 
 ## 8. Important note about current RA state
 
-Current `erpnext-ra` is a baseline SPI scaffold for WildFly integration.
-Before production use, complete:
+Current `erpnext-ra` now implements outbound HTTP operations required by the BLPS ERP flow:
 
-1. HTTP execution operations in `ErpNextConnectionImpl` for ERP endpoints.
-2. Robust exception mapping and retry policy.
-3. Pooling, validation, and lifecycle hardening.
-4. Security: move secrets to Elytron credential store.
+1. ensure customer
+2. create quotation
+3. create sales order from quotation
+4. create sales invoice from sales order
+
+Before production use, still complete:
+
+1. robust retry policy / backoff
+2. connection validation and lifecycle hardening
+3. stronger observability and metrics
+4. security: move secrets to Elytron credential store

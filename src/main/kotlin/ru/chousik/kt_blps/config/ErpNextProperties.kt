@@ -6,9 +6,7 @@ import org.springframework.stereotype.Component
 @ConfigurationProperties(prefix = "erpnext")
 @Component
 data class ErpNextProperties(
-    var baseUrl: String = "",
-    var apiKey: String = "",
-    var apiSecret: String = "",
     var company: String = "",
-    var serviceItemCode: String = ""
+    var serviceItemCode: String = "",
+    var jndiName: String = ""
 )
