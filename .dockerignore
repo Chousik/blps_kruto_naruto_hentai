@@ -1,0 +1,9 @@
+.git
+.gradle
+.gradle-local
+build
+out
+.idea
+*.iml
+payment-service/build
+frappe_docker
