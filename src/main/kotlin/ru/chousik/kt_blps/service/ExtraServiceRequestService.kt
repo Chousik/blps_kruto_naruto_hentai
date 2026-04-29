@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
@@ -41,8 +40,8 @@ class ExtraServiceRequestService(
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
     private val paymentRequestRepository: PaymentRequestRepository,
     private val chatSystemMessageService: ChatSystemMessageService,
-    private val kafkaTemplate: KafkaTemplate<String, String>,
     private val objectMapper: ObjectMapper,
+    private val outboxService: OutboxService,
     private val erpNextSyncService: ErpNextSyncService,
     private val afterCommitExecutor: AfterCommitExecutor,
     @Value("\${app.kafka.payment-topic}")
@@ -225,24 +224,16 @@ class ExtraServiceRequestService(
         }
 
         val savedPayment = paymentRequestRepository.save(payment)
-        try {
-            publishPaymentRequestCreated(
-                PaymentRequestCreatedEvent(
-                    paymentRequestId = savedPayment.id,
-                    extraServiceRequestId = service.id,
-                    chatId = service.chat.id,
-                    title = service.title,
-                    amount = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
-                    currency = service.currency.uppercase()
-                )
+        enqueuePaymentRequestCreated(
+            PaymentRequestCreatedEvent(
+                paymentRequestId = savedPayment.id,
+                extraServiceRequestId = service.id,
+                chatId = service.chat.id,
+                title = service.title,
+                amount = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
+                currency = service.currency.uppercase()
             )
-        } catch (ex: Exception) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "failed to publish payment request event",
-                ex
-            )
-        }
+        )
 
         service.status = ExtraServiceRequestStatus.PAYMENT_LINK_SENT
 
@@ -318,8 +309,15 @@ class ExtraServiceRequestService(
         chatRepository.save(chat)
     }
 
-    private fun publishPaymentRequestCreated(event: PaymentRequestCreatedEvent) {
+    private fun enqueuePaymentRequestCreated(event: PaymentRequestCreatedEvent) {
         val payload = objectMapper.writeValueAsString(event)
-        kafkaTemplate.send(paymentTopic, event.paymentRequestId.toString(), payload).get()
+        outboxService.enqueue(
+            aggregateType = "payment_request",
+            aggregateId = event.paymentRequestId,
+            eventType = PaymentRequestCreatedEvent::class.qualifiedName ?: "PaymentRequestCreatedEvent",
+            topic = paymentTopic,
+            messageKey = event.paymentRequestId.toString(),
+            payload = payload
+        )
     }
 }

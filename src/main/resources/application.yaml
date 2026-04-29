@@ -31,6 +31,10 @@ spring:
 app:
   kafka:
     payment-topic: ${PAYMENT_REQUESTS_TOPIC:payment-requests}
+  outbox:
+    fixed-delay-ms: ${OUTBOX_PUBLISHER_DELAY_MS:2000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    lock-timeout-seconds: ${OUTBOX_LOCK_TIMEOUT_SECONDS:60}
   payment-reminders:
     fixed-delay-ms: ${PAYMENT_REMINDER_SCHEDULER_DELAY_MS:30000}
     payment-url-assigned-topic: ${PAYMENT_URL_ASSIGNED_TOPIC:payment-url-assigned}

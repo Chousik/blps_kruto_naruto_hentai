@@ -1,0 +1,9 @@
+.git
+.gradle
+.gradle-local
+.idea
+.kotlin
+build
+out
+*.iml
+HELP.md
