@@ -26,5 +26,7 @@ spring:
 app:
   kafka:
     payment-topic: ${PAYMENT_REQUESTS_TOPIC:payment-requests}
+  payment-reminders:
+    fixed-delay-ms: ${PAYMENT_REMINDER_SCHEDULER_DELAY_MS:30000}
 server:
   port: 8433
