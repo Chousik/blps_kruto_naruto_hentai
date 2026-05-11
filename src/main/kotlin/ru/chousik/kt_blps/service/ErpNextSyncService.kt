@@ -42,7 +42,6 @@ class ErpNextSyncService(
                 return@executeWithoutResult
             }
 
-            // Keep both participants represented in ERP.
             ensureCustomer(extraService.chat.host)
             val guestCustomer = ensureCustomer(extraService.chat.guest)
 
