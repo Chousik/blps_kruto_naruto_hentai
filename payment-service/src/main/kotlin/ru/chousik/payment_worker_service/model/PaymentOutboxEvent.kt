@@ -1,4 +1,4 @@
-package ru.chousik.kt_blps.model
+package ru.chousik.payment_worker_service.model
 
 import jakarta.persistence.Column
 import jakarta.persistence.Entity
@@ -13,27 +13,12 @@ import java.time.OffsetDateTime
 import java.util.UUID
 
 @Entity
-@Table(name = "outbox_events")
-class OutboxEvent {
+@Table(name = "payment_worker_outbox_events")
+class PaymentOutboxEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     lateinit var id: UUID
-
-    @Column(name = "aggregate_type", nullable = false, length = 100)
-    lateinit var aggregateType: String
-
-    @Column(name = "aggregate_id", nullable = false)
-    lateinit var aggregateId: UUID
-
-    @Column(name = "event_type", nullable = false, length = 200)
-    lateinit var eventType: String
-
-    @Column(name = "topic", nullable = false, length = 255)
-    lateinit var topic: String
-
-    @Column(name = "message_key", nullable = false, length = 255)
-    lateinit var messageKey: String
 
     @Lob
     @Column(name = "payload", nullable = false, columnDefinition = "text")
@@ -41,20 +26,17 @@ class OutboxEvent {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 32)
-    lateinit var status: OutboxEventStatus
+    lateinit var status: PaymentOutboxEventStatus
 
     @Column(name = "attempt_count", nullable = false)
     var attemptCount: Int = 0
 
-    @Column(name = "attempted_at")
-    var attemptedAt: OffsetDateTime? = null
+    @Column(name = "attempted_at", nullable = false)
+    lateinit var attemptedAt: OffsetDateTime
 
     @Column(name = "last_error", length = 2000)
     var lastError: String? = null
 
     @Column(name = "created_at", nullable = false)
     lateinit var createdAt: OffsetDateTime
-
-    @Column(name = "updated_at", nullable = false)
-    lateinit var updatedAt: OffsetDateTime
 }

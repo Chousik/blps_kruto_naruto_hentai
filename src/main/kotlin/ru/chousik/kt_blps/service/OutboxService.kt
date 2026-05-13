@@ -9,7 +9,9 @@ import ru.chousik.kt_blps.repository.OutboxEventRepository
 
 @Service
 class OutboxService(
-    private val outboxEventRepository: OutboxEventRepository
+    private val outboxEventRepository: OutboxEventRepository,
+    private val outboxPublisher: OutboxPublisher,
+    private val afterCommitExecutor: AfterCommitExecutor
 ) {
 
     fun enqueue(
@@ -21,7 +23,7 @@ class OutboxService(
         payload: String
     ) {
         val now = OffsetDateTime.now()
-        outboxEventRepository.save(
+        val saved = outboxEventRepository.save(
             OutboxEvent().apply {
                 this.aggregateType = aggregateType
                 this.aggregateId = aggregateId
@@ -30,9 +32,15 @@ class OutboxService(
                 this.messageKey = messageKey
                 this.payload = payload
                 status = OutboxEventStatus.PENDING
+                attemptCount = 0
+                attemptedAt = now
                 createdAt = now
                 updatedAt = now
             }
         )
+
+        afterCommitExecutor.run {
+            outboxPublisher.publishNow(saved.id)
+        }
     }
 }

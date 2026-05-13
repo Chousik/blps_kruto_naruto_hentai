@@ -1,24 +1,24 @@
-package ru.chousik.kt_blps.service
+package ru.chousik.payment_worker_service.service
 
 import java.time.OffsetDateTime
 import java.util.UUID
-import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.PageRequest
 import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
-import ru.chousik.kt_blps.model.OutboxEvent
-import ru.chousik.kt_blps.model.OutboxEventStatus
-import ru.chousik.kt_blps.repository.OutboxEventRepository
+import ru.chousik.payment_worker_service.model.PaymentOutboxEvent
+import ru.chousik.payment_worker_service.model.PaymentOutboxEventStatus
+import ru.chousik.payment_worker_service.repository.PaymentOutboxEventRepository
 
 @Service
-class OutboxPublisher(
-    private val outboxEventRepository: OutboxEventRepository,
+class PaymentOutboxPublisher(
+    private val paymentOutboxEventRepository: PaymentOutboxEventRepository,
     private val kafkaTemplate: KafkaTemplate<String, String>,
-    @Qualifier("writeTransactionTemplate")
-    private val writeTransactionTemplate: TransactionTemplate,
+    private val transactionTemplate: TransactionTemplate,
+    @Value("\${app.kafka.payment-url-assigned-topic}")
+    private val paymentUrlAssignedTopic: String,
     @Value("\${app.outbox.batch-size:50}")
     private val batchSize: Int,
     @Value("\${app.outbox.max-attempts:10}")
@@ -28,27 +28,28 @@ class OutboxPublisher(
     @Value("\${app.outbox.max-retry-delay-ms:300000}")
     private val maxRetryDelayMs: Long
 ) {
-    @Scheduled(fixedDelayString = "\${app.outbox.fixed-delay-ms:2000}")
+
+    @Scheduled(fixedDelayString = "\${app.outbox.fixed-delay-ms:5000}")
     fun publishPendingEvents() {
         claimBatch().forEach(::publishSingle)
     }
 
     fun publishNow(eventId: UUID) = claimEvent(eventId)?.let(::publishSingle)
 
-    private fun claimBatch(): List<ClaimedOutboxEvent> =
-        writeTransactionTemplate.execute {
+    private fun claimBatch(): List<PaymentOutboxEvent> =
+        transactionTemplate.execute {
             val now = OffsetDateTime.now()
-            outboxEventRepository.findReadyBatch(
-                statuses = listOf(OutboxEventStatus.PENDING, OutboxEventStatus.FAILED),
+            paymentOutboxEventRepository.findReadyBatch(
+                statuses = listOf(PaymentOutboxEventStatus.PENDING, PaymentOutboxEventStatus.FAILED),
                 attemptedBefore = now,
                 maxAttempts = maxAttempts,
                 pageable = PageRequest.of(0, batchSize)
             ).map { claim(it, now) }
         }.orEmpty()
 
-    private fun claimEvent(eventId: UUID): ClaimedOutboxEvent? =
-        writeTransactionTemplate.execute {
-            val event = outboxEventRepository.findByIdForUpdate(eventId) ?: return@execute null
+    private fun claimEvent(eventId: UUID): PaymentOutboxEvent? =
+        transactionTemplate.execute {
+            val event = paymentOutboxEventRepository.findByIdForUpdate(eventId) ?: return@execute null
             val now = OffsetDateTime.now()
             if (!event.isReadyForAttempt(now, maxAttempts)) {
                 return@execute null
@@ -57,17 +58,15 @@ class OutboxPublisher(
             claim(event, now)
         }
 
-    private fun claim(event: OutboxEvent, now: OffsetDateTime): ClaimedOutboxEvent {
+    private fun claim(event: PaymentOutboxEvent, now: OffsetDateTime): PaymentOutboxEvent {
         event.attemptCount += 1
         event.attemptedAt = now.plus(computeBackoff(event.attemptCount))
-        event.updatedAt = now
-        outboxEventRepository.save(event)
-        return ClaimedOutboxEvent(event.id, event.topic, event.messageKey, event.payload)
+        return paymentOutboxEventRepository.save(event)
     }
 
-    private fun publishSingle(event: ClaimedOutboxEvent) {
+    private fun publishSingle(event: PaymentOutboxEvent) {
         try {
-            kafkaTemplate.send(event.topic, event.messageKey, event.payload).get()
+            kafkaTemplate.send(paymentUrlAssignedTopic, event.id.toString(), event.payload).get()
             markSent(event.id)
         } catch (ex: Exception) {
             markFailed(event.id, ex)
@@ -75,34 +74,31 @@ class OutboxPublisher(
     }
 
     private fun markSent(eventId: UUID) {
-        writeTransactionTemplate.executeWithoutResult {
-            val event = outboxEventRepository.findById(eventId).orElse(null) ?: return@executeWithoutResult
-            if (event.status == OutboxEventStatus.SENT) {
+        transactionTemplate.executeWithoutResult {
+            val event = paymentOutboxEventRepository.findById(eventId).orElse(null) ?: return@executeWithoutResult
+            if (event.status == PaymentOutboxEventStatus.SENT) {
                 return@executeWithoutResult
             }
 
-            val now = OffsetDateTime.now()
-            event.status = OutboxEventStatus.SENT
-            event.attemptedAt = now
+            event.status = PaymentOutboxEventStatus.SENT
+            event.attemptedAt = OffsetDateTime.now()
             event.lastError = null
-            event.updatedAt = now
-            outboxEventRepository.save(event)
+            paymentOutboxEventRepository.save(event)
         }
     }
 
     private fun markFailed(eventId: UUID, exception: Exception) {
-        writeTransactionTemplate.executeWithoutResult {
-            val event = outboxEventRepository.findById(eventId).orElse(null) ?: return@executeWithoutResult
-            if (event.status == OutboxEventStatus.SENT) {
+        transactionTemplate.executeWithoutResult {
+            val event = paymentOutboxEventRepository.findById(eventId).orElse(null) ?: return@executeWithoutResult
+            if (event.status == PaymentOutboxEventStatus.SENT) {
                 return@executeWithoutResult
             }
 
             val now = OffsetDateTime.now()
-            event.status = OutboxEventStatus.FAILED
+            event.status = PaymentOutboxEventStatus.FAILED
             event.attemptedAt = now.plus(computeBackoff(event.attemptCount))
             event.lastError = exception.message?.take(2000) ?: exception.javaClass.simpleName
-            event.updatedAt = now
-            outboxEventRepository.save(event)
+            paymentOutboxEventRepository.save(event)
         }
     }
 
@@ -112,15 +108,8 @@ class OutboxPublisher(
         return java.time.Duration.ofMillis(delayMs)
     }
 
-    private fun OutboxEvent.isReadyForAttempt(now: OffsetDateTime, maxAttempts: Int) =
-        status != OutboxEventStatus.SENT &&
+    private fun PaymentOutboxEvent.isReadyForAttempt(now: OffsetDateTime, maxAttempts: Int) =
+        status != PaymentOutboxEventStatus.SENT &&
             attemptCount < maxAttempts &&
-            attemptedAt?.let { it <= now } == true
-
-    private data class ClaimedOutboxEvent(
-        val id: UUID,
-        val topic: String,
-        val messageKey: String,
-        val payload: String
-    )
+            attemptedAt <= now
 }

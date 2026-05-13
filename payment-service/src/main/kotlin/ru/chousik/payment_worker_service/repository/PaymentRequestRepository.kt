@@ -5,5 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository
 import ru.chousik.payment_worker_service.model.PaymentRequest
 
 interface PaymentRequestRepository : JpaRepository<PaymentRequest, UUID> {
+    fun findByExtraServiceRequestId(extraServiceRequestId: UUID): PaymentRequest?
+
     fun findByProviderPaymentId(providerPaymentId: String): PaymentRequest?
 }

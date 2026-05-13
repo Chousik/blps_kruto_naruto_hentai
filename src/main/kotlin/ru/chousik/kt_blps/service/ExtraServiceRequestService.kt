@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.data.domain.Page
 import org.springframework.data.domain.Sort
 import org.springframework.http.HttpStatus
-import org.springframework.kafka.core.KafkaTemplate
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.server.ResponseStatusException
@@ -17,15 +16,13 @@ import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestCreateDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestResponseDTO
 import ru.chousik.kt_blps.dto.extraservice.ExtraServiceRequestUpdateDTO
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecision
+import ru.chousik.kt_blps.dto.payment.PaymentCreationRequestedEvent
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionRequest
 import ru.chousik.kt_blps.dto.payment.ExtraServiceDecisionResponse
-import ru.chousik.kt_blps.dto.payment.PaymentRequestCreatedEvent
 import ru.chousik.kt_blps.dto.payment.PaymentRequestView
 import ru.chousik.kt_blps.model.Chat
 import ru.chousik.kt_blps.model.ExtraServiceRequest
 import ru.chousik.kt_blps.model.ExtraServiceRequestStatus
-import ru.chousik.kt_blps.model.PaymentRequest
-import ru.chousik.kt_blps.model.PaymentRequestStatus
 import ru.chousik.kt_blps.model.User
 import ru.chousik.kt_blps.model.UserRole
 import ru.chousik.kt_blps.pagination.OffsetBasedPageRequest
@@ -41,8 +38,8 @@ class ExtraServiceRequestService(
     private val extraServiceRequestRepository: ExtraServiceRequestRepository,
     private val paymentRequestRepository: PaymentRequestRepository,
     private val chatSystemMessageService: ChatSystemMessageService,
-    private val kafkaTemplate: KafkaTemplate<String, String>,
     private val objectMapper: ObjectMapper,
+    private val outboxService: OutboxService,
     private val erpSyncOutboxService: ErpSyncOutboxService,
     @Value("\${app.kafka.payment-topic}")
     private val paymentTopic: String,
@@ -115,7 +112,14 @@ class ExtraServiceRequestService(
 
             val payment = paymentRequestRepository
                 .findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id)
-                ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "payment request not found for extra service")
+                ?: throw ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    when (service.status) {
+                        ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED -> "payment link is being created"
+                        ExtraServiceRequestStatus.PAYMENT_FAILED -> "payment link creation failed"
+                        else -> "payment request not found for extra service"
+                    }
+                )
 
             val view = PaymentRequestView.from(payment)
             val expiresAt = payment.expiresAt
@@ -214,20 +218,12 @@ class ExtraServiceRequestService(
         }
 
         val now = OffsetDateTime.now()
-        val payment = PaymentRequest().apply {
-            extraServiceRequestId = service.id
-            initiatedBy = requester
-            status = PaymentRequestStatus.WAITING_PAYMENT
-            createdAt = now
-        }
-
-        val savedPayment = paymentRequestRepository.save(payment)
         try {
-            publishPaymentRequestCreated(
-                PaymentRequestCreatedEvent(
-                    paymentRequestId = savedPayment.id,
+            publishPaymentCreationRequested(
+                PaymentCreationRequestedEvent(
                     extraServiceRequestId = service.id,
                     chatId = service.chat.id,
+                    initiatedByUserId = requester.id,
                     title = service.title,
                     amount = service.amount.setScale(2, RoundingMode.HALF_UP).toPlainString(),
                     currency = service.currency.uppercase()
@@ -241,20 +237,76 @@ class ExtraServiceRequestService(
             )
         }
 
-        service.status = ExtraServiceRequestStatus.PAYMENT_LINK_SENT
+        service.status = ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED
+        service.updatedAt = now
 
         val savedService = extraServiceRequestRepository.save(service)
         touchChat(service.chat, now)
         chatSystemMessageService.append(
             chat = service.chat,
-            message = "Guest accepted extra service '${savedService.title}'. Payment request queued for processing."
+            message = "Guest accepted extra service '${savedService.title}'. Payment link creation requested."
         )
         erpSyncOutboxService.enqueueSyncSalesOrderForExtraService(savedService.id)
 
-        return ExtraServiceDecisionResponse(
-            extraService = ExtraServiceRequestResponseDTO.from(savedService),
-            payment = PaymentRequestView.from(savedPayment)
-        )
+        return ExtraServiceDecisionResponse(extraService = ExtraServiceRequestResponseDTO.from(savedService))
+    }
+
+    fun markPaymentLinkAssigned(serviceId: UUID) {
+        writeTransactionTemplate.executeWithoutResult {
+            val service = loadExtraService(serviceId)
+            when (service.status) {
+                ExtraServiceRequestStatus.PAYMENT_LINK_SENT,
+                ExtraServiceRequestStatus.PAID,
+                ExtraServiceRequestStatus.SERVICE_DELIVERED -> return@executeWithoutResult
+
+                ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED,
+                ExtraServiceRequestStatus.PAYMENT_FAILED -> Unit
+
+                else -> return@executeWithoutResult
+            }
+
+            val now = OffsetDateTime.now()
+            service.status = ExtraServiceRequestStatus.PAYMENT_LINK_SENT
+            service.updatedAt = now
+            val savedService = extraServiceRequestRepository.save(service)
+            touchChat(savedService.chat, now)
+            chatSystemMessageService.append(
+                chat = savedService.chat,
+                message = "Payment link for extra service '${savedService.title}' is ready."
+            )
+        }
+    }
+
+    fun markPaymentCreationFailed(serviceId: UUID, errorMessage: String?) {
+        writeTransactionTemplate.executeWithoutResult {
+            val service = loadExtraService(serviceId)
+            when (service.status) {
+                ExtraServiceRequestStatus.PAYMENT_LINK_SENT,
+                ExtraServiceRequestStatus.PAID,
+                ExtraServiceRequestStatus.SERVICE_DELIVERED -> return@executeWithoutResult
+
+                ExtraServiceRequestStatus.PAYMENT_FAILED -> return@executeWithoutResult
+
+                ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED -> Unit
+
+                else -> return@executeWithoutResult
+            }
+
+            val now = OffsetDateTime.now()
+            service.status = ExtraServiceRequestStatus.PAYMENT_FAILED
+            service.updatedAt = now
+            val savedService = extraServiceRequestRepository.save(service)
+            touchChat(savedService.chat, now)
+            val details = errorMessage?.take(180)?.takeIf { it.isNotBlank() }
+            chatSystemMessageService.append(
+                chat = savedService.chat,
+                message = if (details == null) {
+                    "Payment link creation failed for extra service '${savedService.title}'. Retry limit reached."
+                } else {
+                    "Payment link creation failed for extra service '${savedService.title}'. Retry limit reached. Reason: $details"
+                }
+            )
+        }
     }
 
     private fun loadChat(chatId: UUID): Chat =
@@ -313,8 +365,15 @@ class ExtraServiceRequestService(
         chatRepository.save(chat)
     }
 
-    private fun publishPaymentRequestCreated(event: PaymentRequestCreatedEvent) {
+    private fun publishPaymentCreationRequested(event: PaymentCreationRequestedEvent) {
         val payload = objectMapper.writeValueAsString(event)
-        kafkaTemplate.send(paymentTopic, event.paymentRequestId.toString(), payload).get()
+        outboxService.enqueue(
+            aggregateType = "payment_creation_request",
+            aggregateId = event.extraServiceRequestId,
+            eventType = PaymentCreationRequestedEvent::class.qualifiedName ?: "PaymentCreationRequestedEvent",
+            topic = paymentTopic,
+            messageKey = event.extraServiceRequestId.toString(),
+            payload = payload
+        )
     }
 }

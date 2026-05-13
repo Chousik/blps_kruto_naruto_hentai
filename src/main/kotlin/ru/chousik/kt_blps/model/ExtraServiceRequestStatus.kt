@@ -2,6 +2,7 @@ package ru.chousik.kt_blps.model
 
 enum class ExtraServiceRequestStatus {
     WAITING_GUEST_APPROVAL,
+    PAYMENT_LINK_REQUESTED,
     PAYMENT_LINK_SENT,
     PAID,
     PAYMENT_FAILED,

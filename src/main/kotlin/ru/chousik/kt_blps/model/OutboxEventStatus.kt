@@ -2,6 +2,8 @@ package ru.chousik.kt_blps.model
 
 enum class OutboxEventStatus {
     PENDING,
-    IN_PROGRESS,
-    PUBLISHED
+    SENT,
+    FAILED,
+    PUBLISHED,
+    IN_PROGRESS
 }

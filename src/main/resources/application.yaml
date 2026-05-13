@@ -35,7 +35,9 @@ app:
   outbox:
     fixed-delay-ms: ${OUTBOX_PUBLISHER_DELAY_MS:2000}
     batch-size: ${OUTBOX_BATCH_SIZE:50}
-    lock-timeout-seconds: ${OUTBOX_LOCK_TIMEOUT_SECONDS:60}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:10}
+    initial-retry-delay-ms: ${OUTBOX_INITIAL_RETRY_DELAY_MS:5000}
+    max-retry-delay-ms: ${OUTBOX_MAX_RETRY_DELAY_MS:300000}
   payment-reminders:
     fixed-delay-ms: ${PAYMENT_REMINDER_SCHEDULER_DELAY_MS:30000}
     payment-url-assigned-topic: ${PAYMENT_URL_ASSIGNED_TOPIC:payment-url-assigned}
