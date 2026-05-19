@@ -30,6 +30,7 @@ import ru.chousik.kt_blps.repository.ChatRepository
 import ru.chousik.kt_blps.repository.ExtraServiceRequestRepository
 import ru.chousik.kt_blps.repository.PaymentRequestRepository
 import ru.chousik.kt_blps.repository.UserRepository
+import ru.chousik.kt_blps.workflow.ExtraServiceWorkflowService
 
 @Service
 class ExtraServiceRequestService(
@@ -41,6 +42,7 @@ class ExtraServiceRequestService(
     private val objectMapper: ObjectMapper,
     private val outboxService: OutboxService,
     private val erpSyncOutboxService: ErpSyncOutboxService,
+    private val extraServiceWorkflowService: ExtraServiceWorkflowService,
     @Value("\${app.kafka.payment-topic}")
     private val paymentTopic: String,
     @Qualifier("writeTransactionTemplate")
@@ -77,7 +79,16 @@ class ExtraServiceRequestService(
             chat = chat,
             message = "Host proposed extra service '${saved.title}' for ${saved.amount} ${saved.currency}."
         )
-        erpSyncOutboxService.enqueueSyncQuotationForExtraService(saved.id)
+        try {
+            extraServiceWorkflowService.startExtraServiceProcess(
+                extraServiceId = saved.id,
+                chatId = saved.chat.id,
+                hostUserId = saved.chat.host.id,
+                guestUserId = saved.chat.guest.id
+            )
+        } catch (ex: Exception) {
+            throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "failed to start extra service BPM process", ex)
+        }
         ExtraServiceRequestResponseDTO.from(saved)
     }
 
@@ -143,7 +154,12 @@ class ExtraServiceRequestService(
         dto.description?.let { service.description = it.trim() }
         dto.amount?.let { service.amount = it.setScale(2, RoundingMode.HALF_UP) }
         dto.currency?.let { service.currency = it.uppercase() }
-        dto.status?.let { service.status = it }
+        if (dto.status != null && dto.status != service.status) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "extra service status is managed by BPM process"
+            )
+        }
 
         val now = OffsetDateTime.now()
         service.updatedAt = now
@@ -180,45 +196,53 @@ class ExtraServiceRequestService(
         requesterId: UUID,
         request: ExtraServiceDecisionRequest
     ): ExtraServiceDecisionResponse = writeTransactionTemplate.execute {
-        when (request.decision!!) {
-            ExtraServiceDecision.REJECT -> rejectExtraService(serviceId, requesterId)
-            ExtraServiceDecision.ACCEPT -> acceptExtraService(serviceId, requesterId)
+        val service = loadExtraService(serviceId)
+        val requester = loadUser(requesterId)
+        ensureGuestDecisionAllowed(service, requester)
+        ensureWaitingGuestApproval(service)
+
+        try {
+            when (request.decision!!) {
+                ExtraServiceDecision.REJECT -> extraServiceWorkflowService.rejectExtraService(service.id, requester.id)
+                ExtraServiceDecision.ACCEPT -> extraServiceWorkflowService.acceptExtraService(service.id, requester.id)
+            }
+        } catch (ex: Exception) {
+            throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "failed to correlate extra service BPM decision", ex)
         }
+        ExtraServiceDecisionResponse(extraService = ExtraServiceRequestResponseDTO.from(service))
     }
 
-    private fun rejectExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceDecisionResponse {
-        val service = loadExtraService(serviceId)
-        val requester = loadUser(requesterId)
-        ensureGuestDecisionAllowed(service, requester)
-        ensureWaitingGuestApproval(service)
+    fun rejectExtraServiceFromWorkflow(serviceId: UUID) {
+        writeTransactionTemplate.executeWithoutResult {
+            val service = loadExtraService(serviceId)
+            ensureWaitingGuestApproval(service)
 
-        val now = OffsetDateTime.now()
-        service.status = ExtraServiceRequestStatus.REJECTED
-        service.updatedAt = now
-        val savedService = extraServiceRequestRepository.save(service)
-        touchChat(service.chat, now)
-        chatSystemMessageService.append(
-            chat = savedService.chat,
-            message = "Guest rejected extra service '${savedService.title}'."
-        )
-        return ExtraServiceDecisionResponse(extraService = ExtraServiceRequestResponseDTO.from(savedService))
-    }
-
-    private fun acceptExtraService(serviceId: UUID, requesterId: UUID): ExtraServiceDecisionResponse {
-        val service = loadExtraService(serviceId)
-        val requester = loadUser(requesterId)
-        ensureGuestDecisionAllowed(service, requester)
-        ensureWaitingGuestApproval(service)
-
-        if (paymentRequestRepository.findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id) != null) {
-            throw ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "payment request for this extra service already exists"
+            val now = OffsetDateTime.now()
+            service.status = ExtraServiceRequestStatus.REJECTED
+            service.updatedAt = now
+            val savedService = extraServiceRequestRepository.save(service)
+            touchChat(service.chat, now)
+            chatSystemMessageService.append(
+                chat = savedService.chat,
+                message = "Guest rejected extra service '${savedService.title}'."
             )
         }
+    }
 
-        val now = OffsetDateTime.now()
-        try {
+    fun requestPaymentCreationFromWorkflow(serviceId: UUID, initiatedByUserId: UUID) {
+        writeTransactionTemplate.executeWithoutResult {
+            val service = loadExtraService(serviceId)
+            val requester = loadUser(initiatedByUserId)
+            ensureGuestDecisionAllowed(service, requester)
+            ensureWaitingGuestApproval(service)
+
+            if (paymentRequestRepository.findFirstByExtraServiceRequestIdOrderByCreatedAtDesc(service.id) != null) {
+                throw ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "payment request for this extra service already exists"
+                )
+            }
+
             publishPaymentCreationRequested(
                 PaymentCreationRequestedEvent(
                     extraServiceRequestId = service.id,
@@ -229,26 +253,18 @@ class ExtraServiceRequestService(
                     currency = service.currency.uppercase()
                 )
             )
-        } catch (ex: Exception) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "failed to publish payment request event",
-                ex
+
+            val now = OffsetDateTime.now()
+            service.status = ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED
+            service.updatedAt = now
+            val savedService = extraServiceRequestRepository.save(service)
+            touchChat(service.chat, now)
+            chatSystemMessageService.append(
+                chat = service.chat,
+                message = "Guest accepted extra service '${savedService.title}'. Payment link creation requested."
             )
+            erpSyncOutboxService.enqueueSyncSalesOrderForExtraService(savedService.id)
         }
-
-        service.status = ExtraServiceRequestStatus.PAYMENT_LINK_REQUESTED
-        service.updatedAt = now
-
-        val savedService = extraServiceRequestRepository.save(service)
-        touchChat(service.chat, now)
-        chatSystemMessageService.append(
-            chat = service.chat,
-            message = "Guest accepted extra service '${savedService.title}'. Payment link creation requested."
-        )
-        erpSyncOutboxService.enqueueSyncSalesOrderForExtraService(savedService.id)
-
-        return ExtraServiceDecisionResponse(extraService = ExtraServiceRequestResponseDTO.from(savedService))
     }
 
     fun markPaymentLinkAssigned(serviceId: UUID) {

@@ -10,7 +10,13 @@ import org.springframework.test.context.TestPropertySource
 
 @SpringBootTest
 @Import(BlpsKt2ApplicationTests.TestConfig::class)
-@TestPropertySource(properties = ["spring.main.allow-bean-definition-overriding=true"])
+@TestPropertySource(
+    properties = [
+        "spring.main.allow-bean-definition-overriding=true",
+        "app.camunda.deploy-on-startup=false",
+        "spring.task.scheduling.enabled=false"
+    ]
+)
 class BlpsKt2ApplicationTests {
 
     @Test

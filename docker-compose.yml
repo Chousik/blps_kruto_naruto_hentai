@@ -10,6 +10,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      camunda:
+        condition: service_healthy
     environment:
       DATABASE_URL: jdbc:postgresql://postgres:5432/blps
       DATABASE_USERNAME: ${DATABASE_USERNAME:-blps}
@@ -17,6 +19,7 @@ services:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       PAYMENT_REQUESTS_TOPIC: ${PAYMENT_REQUESTS_TOPIC:-payment-requests}
       PAYMENT_URL_ASSIGNED_TOPIC: ${PAYMENT_URL_ASSIGNED_TOPIC:-payment-url-assigned}
+      CAMUNDA_BASE_URL: ${CAMUNDA_BASE_URL:-http://camunda:8080/engine-rest}
       ERPNEXT_BASE_URL: ${ERPNEXT_BASE_URL:-http://93.100.213.224:18080}
       ERPNEXT_API_KEY: ${ERPNEXT_API_KEY:-bd37acd88af1ab0}
       ERPNEXT_API_SECRET: ${ERPNEXT_API_SECRET:-13adb82443565e8}
@@ -52,6 +55,23 @@ services:
       YOOKASSA_RETURN_URL: ${YOOKASSA_RETURN_URL:-https://youtube.com}
     ports:
       - "8434:8434"
+
+  camunda:
+    image: camunda/camunda-bpm-platform:run-latest
+    container_name: camunda
+    restart: unless-stopped
+    environment:
+      CAMUNDA_BPM_ADMIN_USER_ID: ${CAMUNDA_ADMIN_USER_ID:-admin}
+      CAMUNDA_BPM_ADMIN_USER_PASSWORD: ${CAMUNDA_ADMIN_USER_PASSWORD:-admin}
+      CAMUNDA_BPM_ADMIN_USER_FIRSTNAME: ${CAMUNDA_ADMIN_USER_FIRSTNAME:-BLPS}
+      CAMUNDA_BPM_ADMIN_USER_LASTNAME: ${CAMUNDA_ADMIN_USER_LASTNAME:-Admin}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/engine-rest/engine || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
 
   postgres:
     image: postgres:16-alpine

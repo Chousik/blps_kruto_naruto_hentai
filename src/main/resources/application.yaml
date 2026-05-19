@@ -45,6 +45,18 @@ app:
     fixed-delay-ms: ${ERP_SYNC_OUTBOX_DELAY_MS:30000}
     batch-size: ${ERP_SYNC_OUTBOX_BATCH_SIZE:20}
     max-attempts: ${ERP_SYNC_OUTBOX_MAX_ATTEMPTS:20}
+  camunda:
+    base-url: ${CAMUNDA_BASE_URL:http://localhost:8080/engine-rest}
+    deploy-on-startup: ${CAMUNDA_DEPLOY_ON_STARTUP:true}
+    worker-id: ${CAMUNDA_WORKER_ID:core-service}
+    extra-service:
+      guest-decision-timeout: ${CAMUNDA_EXTRA_SERVICE_GUEST_DECISION_TIMEOUT:PT24H}
+    external-task:
+      fixed-delay-ms: ${CAMUNDA_EXTERNAL_TASK_DELAY_MS:3000}
+      max-tasks: ${CAMUNDA_EXTERNAL_TASK_MAX_TASKS:10}
+      lock-duration-ms: ${CAMUNDA_EXTERNAL_TASK_LOCK_DURATION_MS:30000}
+      failure-retries: ${CAMUNDA_EXTERNAL_TASK_FAILURE_RETRIES:3}
+      failure-retry-timeout-ms: ${CAMUNDA_EXTERNAL_TASK_FAILURE_RETRY_TIMEOUT_MS:30000}
 erpnext:
   company: ${ERPNEXT_COMPANY:AirBNB}
   service-item-code: ${ERPNEXT_SERVICE_ITEM_CODE:EXTRA_SERVICE}

@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_extra_service"
+                  targetNamespace="http://chousik.ru/blps/bpmn">
+    <bpmn:message id="Message_extra_service_accepted" name="ExtraServiceAccepted"/>
+    <bpmn:message id="Message_extra_service_rejected" name="ExtraServiceRejected"/>
+    <bpmn:message id="Message_payment_link_assigned" name="PaymentLinkAssigned"/>
+    <bpmn:message id="Message_payment_creation_failed" name="PaymentCreationFailed"/>
+
+    <bpmn:process id="extra-service-process"
+                  name="Extra Service Payment Process"
+                  isExecutable="true"
+                  camunda:historyTimeToLive="30">
+        <bpmn:laneSet id="LaneSet_extra_service_roles">
+            <bpmn:lane id="Lane_host" name="Host (lessor)">
+                <bpmn:flowNodeRef>StartEvent_extra_service_created</bpmn:flowNodeRef>
+            </bpmn:lane>
+            <bpmn:lane id="Lane_user" name="User (renter)">
+                <bpmn:flowNodeRef>Gateway_wait_guest_decision</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Event_extra_service_accepted</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Event_extra_service_rejected</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Event_guest_decision_timeout</bpmn:flowNodeRef>
+            </bpmn:lane>
+            <bpmn:lane id="Lane_platform" name="Platform">
+                <bpmn:flowNodeRef>Task_sync_quotation</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Task_mark_rejected</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>EndEvent_rejected</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Task_request_payment</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Gateway_wait_payment_result</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Event_payment_link_assigned</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Event_payment_creation_failed</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Task_mark_payment_link_sent</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Task_sync_sales_invoice</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>EndEvent_payment_link_sent</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>Task_mark_payment_failed</bpmn:flowNodeRef>
+                <bpmn:flowNodeRef>EndEvent_payment_failed</bpmn:flowNodeRef>
+            </bpmn:lane>
+        </bpmn:laneSet>
+
+        <bpmn:startEvent id="StartEvent_extra_service_created" name="Extra service created">
+            <bpmn:outgoing>Flow_start_to_quotation</bpmn:outgoing>
+        </bpmn:startEvent>
+
+        <bpmn:serviceTask id="Task_sync_quotation"
+                          name="Sync quotation in ERPNext"
+                          camunda:type="external"
+                          camunda:topic="sync-extra-service-quotation">
+            <bpmn:incoming>Flow_start_to_quotation</bpmn:incoming>
+            <bpmn:outgoing>Flow_quotation_to_approval</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:eventBasedGateway id="Gateway_wait_guest_decision" name="Wait for guest decision">
+            <bpmn:incoming>Flow_quotation_to_approval</bpmn:incoming>
+            <bpmn:outgoing>Flow_gateway_to_accept</bpmn:outgoing>
+            <bpmn:outgoing>Flow_gateway_to_reject</bpmn:outgoing>
+            <bpmn:outgoing>Flow_gateway_to_decision_timeout</bpmn:outgoing>
+        </bpmn:eventBasedGateway>
+
+        <bpmn:intermediateCatchEvent id="Event_extra_service_accepted" name="Accepted">
+            <bpmn:incoming>Flow_gateway_to_accept</bpmn:incoming>
+            <bpmn:outgoing>Flow_accept_to_request_payment</bpmn:outgoing>
+            <bpmn:messageEventDefinition messageRef="Message_extra_service_accepted"/>
+        </bpmn:intermediateCatchEvent>
+
+        <bpmn:intermediateCatchEvent id="Event_extra_service_rejected" name="Rejected">
+            <bpmn:incoming>Flow_gateway_to_reject</bpmn:incoming>
+            <bpmn:outgoing>Flow_reject_to_mark_rejected</bpmn:outgoing>
+            <bpmn:messageEventDefinition messageRef="Message_extra_service_rejected"/>
+        </bpmn:intermediateCatchEvent>
+
+        <bpmn:intermediateCatchEvent id="Event_guest_decision_timeout" name="Guest ignored request">
+            <bpmn:incoming>Flow_gateway_to_decision_timeout</bpmn:incoming>
+            <bpmn:outgoing>Flow_timeout_to_mark_rejected</bpmn:outgoing>
+            <bpmn:timerEventDefinition>
+                <bpmn:timeDuration xsi:type="bpmn:tFormalExpression" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">${guestDecisionTimeout}</bpmn:timeDuration>
+            </bpmn:timerEventDefinition>
+        </bpmn:intermediateCatchEvent>
+
+        <bpmn:serviceTask id="Task_mark_rejected"
+                          name="Mark extra service rejected"
+                          camunda:type="external"
+                          camunda:topic="mark-extra-service-rejected">
+            <bpmn:incoming>Flow_reject_to_mark_rejected</bpmn:incoming>
+            <bpmn:incoming>Flow_timeout_to_mark_rejected</bpmn:incoming>
+            <bpmn:outgoing>Flow_mark_rejected_to_end</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:endEvent id="EndEvent_rejected" name="Rejected">
+            <bpmn:incoming>Flow_mark_rejected_to_end</bpmn:incoming>
+        </bpmn:endEvent>
+
+        <bpmn:serviceTask id="Task_request_payment"
+                          name="Request payment link"
+                          camunda:type="external"
+                          camunda:topic="request-extra-service-payment">
+            <bpmn:incoming>Flow_accept_to_request_payment</bpmn:incoming>
+            <bpmn:outgoing>Flow_payment_to_wait_result</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:eventBasedGateway id="Gateway_wait_payment_result" name="Wait for payment provider result">
+            <bpmn:incoming>Flow_payment_to_wait_result</bpmn:incoming>
+            <bpmn:outgoing>Flow_gateway_to_payment_link</bpmn:outgoing>
+            <bpmn:outgoing>Flow_gateway_to_payment_failed</bpmn:outgoing>
+        </bpmn:eventBasedGateway>
+
+        <bpmn:intermediateCatchEvent id="Event_payment_link_assigned" name="Payment link assigned">
+            <bpmn:incoming>Flow_gateway_to_payment_link</bpmn:incoming>
+            <bpmn:outgoing>Flow_link_to_mark_link_sent</bpmn:outgoing>
+            <bpmn:messageEventDefinition messageRef="Message_payment_link_assigned"/>
+        </bpmn:intermediateCatchEvent>
+
+        <bpmn:intermediateCatchEvent id="Event_payment_creation_failed" name="Payment creation failed">
+            <bpmn:incoming>Flow_gateway_to_payment_failed</bpmn:incoming>
+            <bpmn:outgoing>Flow_failed_to_mark_failed</bpmn:outgoing>
+            <bpmn:messageEventDefinition messageRef="Message_payment_creation_failed"/>
+        </bpmn:intermediateCatchEvent>
+
+        <bpmn:serviceTask id="Task_mark_payment_link_sent"
+                          name="Mark payment link sent"
+                          camunda:type="external"
+                          camunda:topic="mark-payment-link-assigned">
+            <bpmn:incoming>Flow_link_to_mark_link_sent</bpmn:incoming>
+            <bpmn:outgoing>Flow_mark_link_to_invoice</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:serviceTask id="Task_sync_sales_invoice"
+                          name="Sync sales invoice in ERPNext"
+                          camunda:type="external"
+                          camunda:topic="sync-extra-service-sales-invoice">
+            <bpmn:incoming>Flow_mark_link_to_invoice</bpmn:incoming>
+            <bpmn:outgoing>Flow_invoice_to_end</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:endEvent id="EndEvent_payment_link_sent" name="Payment link sent">
+            <bpmn:incoming>Flow_invoice_to_end</bpmn:incoming>
+        </bpmn:endEvent>
+
+        <bpmn:serviceTask id="Task_mark_payment_failed"
+                          name="Mark payment creation failed"
+                          camunda:type="external"
+                          camunda:topic="mark-payment-creation-failed">
+            <bpmn:incoming>Flow_failed_to_mark_failed</bpmn:incoming>
+            <bpmn:outgoing>Flow_mark_failed_to_end</bpmn:outgoing>
+        </bpmn:serviceTask>
+
+        <bpmn:endEvent id="EndEvent_payment_failed" name="Payment failed">
+            <bpmn:incoming>Flow_mark_failed_to_end</bpmn:incoming>
+        </bpmn:endEvent>
+
+        <bpmn:sequenceFlow id="Flow_start_to_quotation" sourceRef="StartEvent_extra_service_created" targetRef="Task_sync_quotation"/>
+        <bpmn:sequenceFlow id="Flow_quotation_to_approval" sourceRef="Task_sync_quotation" targetRef="Gateway_wait_guest_decision"/>
+        <bpmn:sequenceFlow id="Flow_gateway_to_accept" sourceRef="Gateway_wait_guest_decision" targetRef="Event_extra_service_accepted"/>
+        <bpmn:sequenceFlow id="Flow_gateway_to_reject" sourceRef="Gateway_wait_guest_decision" targetRef="Event_extra_service_rejected"/>
+        <bpmn:sequenceFlow id="Flow_gateway_to_decision_timeout" sourceRef="Gateway_wait_guest_decision" targetRef="Event_guest_decision_timeout"/>
+        <bpmn:sequenceFlow id="Flow_accept_to_request_payment" sourceRef="Event_extra_service_accepted" targetRef="Task_request_payment"/>
+        <bpmn:sequenceFlow id="Flow_reject_to_mark_rejected" sourceRef="Event_extra_service_rejected" targetRef="Task_mark_rejected"/>
+        <bpmn:sequenceFlow id="Flow_timeout_to_mark_rejected" sourceRef="Event_guest_decision_timeout" targetRef="Task_mark_rejected"/>
+        <bpmn:sequenceFlow id="Flow_mark_rejected_to_end" sourceRef="Task_mark_rejected" targetRef="EndEvent_rejected"/>
+        <bpmn:sequenceFlow id="Flow_payment_to_wait_result" sourceRef="Task_request_payment" targetRef="Gateway_wait_payment_result"/>
+        <bpmn:sequenceFlow id="Flow_gateway_to_payment_link" sourceRef="Gateway_wait_payment_result" targetRef="Event_payment_link_assigned"/>
+        <bpmn:sequenceFlow id="Flow_gateway_to_payment_failed" sourceRef="Gateway_wait_payment_result" targetRef="Event_payment_creation_failed"/>
+        <bpmn:sequenceFlow id="Flow_link_to_mark_link_sent" sourceRef="Event_payment_link_assigned" targetRef="Task_mark_payment_link_sent"/>
+        <bpmn:sequenceFlow id="Flow_mark_link_to_invoice" sourceRef="Task_mark_payment_link_sent" targetRef="Task_sync_sales_invoice"/>
+        <bpmn:sequenceFlow id="Flow_invoice_to_end" sourceRef="Task_sync_sales_invoice" targetRef="EndEvent_payment_link_sent"/>
+        <bpmn:sequenceFlow id="Flow_failed_to_mark_failed" sourceRef="Event_payment_creation_failed" targetRef="Task_mark_payment_failed"/>
+        <bpmn:sequenceFlow id="Flow_mark_failed_to_end" sourceRef="Task_mark_payment_failed" targetRef="EndEvent_payment_failed"/>
+    </bpmn:process>
+
+    <bpmndi:BPMNDiagram id="BPMNDiagram_extra_service">
+        <bpmndi:BPMNPlane id="BPMNPlane_extra_service" bpmnElement="extra-service-process">
+            <bpmndi:BPMNShape id="Lane_host_di" bpmnElement="Lane_host" isHorizontal="true">
+                <dc:Bounds x="60" y="40" width="1600" height="120"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Lane_user_di" bpmnElement="Lane_user" isHorizontal="true">
+                <dc:Bounds x="60" y="160" width="1600" height="260"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Lane_platform_di" bpmnElement="Lane_platform" isHorizontal="true">
+                <dc:Bounds x="60" y="420" width="1600" height="260"/>
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNShape id="StartEvent_extra_service_created_di" bpmnElement="StartEvent_extra_service_created">
+                <dc:Bounds x="130" y="82" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="107" y="125" width="86" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_sync_quotation_di" bpmnElement="Task_sync_quotation">
+                <dc:Bounds x="230" y="510" width="150" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Gateway_wait_guest_decision_di" bpmnElement="Gateway_wait_guest_decision">
+                <dc:Bounds x="450" y="265" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="431" y="322" width="89" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_extra_service_accepted_di" bpmnElement="Event_extra_service_accepted">
+                <dc:Bounds x="580" y="190" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="575" y="233" width="47" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_extra_service_rejected_di" bpmnElement="Event_extra_service_rejected">
+                <dc:Bounds x="580" y="305" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="576" y="348" width="45" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_guest_decision_timeout_di" bpmnElement="Event_guest_decision_timeout">
+                <dc:Bounds x="580" y="365" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="564" y="402" width="69" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_request_payment_di" bpmnElement="Task_request_payment">
+                <dc:Bounds x="680" y="510" width="150" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Gateway_wait_payment_result_di" bpmnElement="Gateway_wait_payment_result">
+                <dc:Bounds x="900" y="525" width="50" height="50"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="884" y="582" width="82" height="40"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_payment_link_assigned_di" bpmnElement="Event_payment_link_assigned">
+                <dc:Bounds x="1030" y="445" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1013" y="488" width="70" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_mark_payment_link_sent_di" bpmnElement="Task_mark_payment_link_sent">
+                <dc:Bounds x="1130" y="423" width="150" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_sync_sales_invoice_di" bpmnElement="Task_sync_sales_invoice">
+                <dc:Bounds x="1340" y="423" width="150" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="EndEvent_payment_link_sent_di" bpmnElement="EndEvent_payment_link_sent">
+                <dc:Bounds x="1540" y="445" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1519" y="488" width="78" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Event_payment_creation_failed_di" bpmnElement="Event_payment_creation_failed">
+                <dc:Bounds x="1030" y="570" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1015" y="613" width="67" height="40"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_mark_payment_failed_di" bpmnElement="Task_mark_payment_failed">
+                <dc:Bounds x="1130" y="548" width="150" height="80"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="EndEvent_payment_failed_di" bpmnElement="EndEvent_payment_failed">
+                <dc:Bounds x="1350" y="570" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="1332" y="613" width="72" height="27"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="Task_mark_rejected_di" bpmnElement="Task_mark_rejected">
+                <dc:Bounds x="680" y="600" width="150" height="60"/>
+            </bpmndi:BPMNShape>
+            <bpmndi:BPMNShape id="EndEvent_rejected_di" bpmnElement="EndEvent_rejected">
+                <dc:Bounds x="910" y="612" width="36" height="36"/>
+                <bpmndi:BPMNLabel>
+                    <dc:Bounds x="907" y="655" width="42" height="14"/>
+                </bpmndi:BPMNLabel>
+            </bpmndi:BPMNShape>
+
+            <bpmndi:BPMNEdge id="Flow_start_to_quotation_di" bpmnElement="Flow_start_to_quotation">
+                <di:waypoint x="166" y="100"/>
+                <di:waypoint x="305" y="100"/>
+                <di:waypoint x="305" y="510"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_quotation_to_approval_di" bpmnElement="Flow_quotation_to_approval">
+                <di:waypoint x="380" y="550"/>
+                <di:waypoint x="475" y="550"/>
+                <di:waypoint x="475" y="315"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_gateway_to_accept_di" bpmnElement="Flow_gateway_to_accept">
+                <di:waypoint x="475" y="265"/>
+                <di:waypoint x="475" y="208"/>
+                <di:waypoint x="580" y="208"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_gateway_to_reject_di" bpmnElement="Flow_gateway_to_reject">
+                <di:waypoint x="500" y="290"/>
+                <di:waypoint x="540" y="290"/>
+                <di:waypoint x="540" y="323"/>
+                <di:waypoint x="580" y="323"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_gateway_to_decision_timeout_di" bpmnElement="Flow_gateway_to_decision_timeout">
+                <di:waypoint x="475" y="315"/>
+                <di:waypoint x="475" y="383"/>
+                <di:waypoint x="580" y="383"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_accept_to_request_payment_di" bpmnElement="Flow_accept_to_request_payment">
+                <di:waypoint x="616" y="208"/>
+                <di:waypoint x="755" y="208"/>
+                <di:waypoint x="755" y="510"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_reject_to_mark_rejected_di" bpmnElement="Flow_reject_to_mark_rejected">
+                <di:waypoint x="616" y="323"/>
+                <di:waypoint x="650" y="323"/>
+                <di:waypoint x="650" y="630"/>
+                <di:waypoint x="680" y="630"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_timeout_to_mark_rejected_di" bpmnElement="Flow_timeout_to_mark_rejected">
+                <di:waypoint x="616" y="383"/>
+                <di:waypoint x="640" y="383"/>
+                <di:waypoint x="640" y="640"/>
+                <di:waypoint x="680" y="640"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_mark_rejected_to_end_di" bpmnElement="Flow_mark_rejected_to_end">
+                <di:waypoint x="830" y="630"/>
+                <di:waypoint x="910" y="630"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_payment_to_wait_result_di" bpmnElement="Flow_payment_to_wait_result">
+                <di:waypoint x="830" y="550"/>
+                <di:waypoint x="900" y="550"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_gateway_to_payment_link_di" bpmnElement="Flow_gateway_to_payment_link">
+                <di:waypoint x="925" y="525"/>
+                <di:waypoint x="925" y="463"/>
+                <di:waypoint x="1030" y="463"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_gateway_to_payment_failed_di" bpmnElement="Flow_gateway_to_payment_failed">
+                <di:waypoint x="925" y="575"/>
+                <di:waypoint x="925" y="588"/>
+                <di:waypoint x="1030" y="588"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_link_to_mark_link_sent_di" bpmnElement="Flow_link_to_mark_link_sent">
+                <di:waypoint x="1066" y="463"/>
+                <di:waypoint x="1130" y="463"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_mark_link_to_invoice_di" bpmnElement="Flow_mark_link_to_invoice">
+                <di:waypoint x="1280" y="463"/>
+                <di:waypoint x="1340" y="463"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_invoice_to_end_di" bpmnElement="Flow_invoice_to_end">
+                <di:waypoint x="1490" y="463"/>
+                <di:waypoint x="1540" y="463"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_failed_to_mark_failed_di" bpmnElement="Flow_failed_to_mark_failed">
+                <di:waypoint x="1066" y="588"/>
+                <di:waypoint x="1130" y="588"/>
+            </bpmndi:BPMNEdge>
+            <bpmndi:BPMNEdge id="Flow_mark_failed_to_end_di" bpmnElement="Flow_mark_failed_to_end">
+                <di:waypoint x="1280" y="588"/>
+                <di:waypoint x="1350" y="588"/>
+            </bpmndi:BPMNEdge>
+        </bpmndi:BPMNPlane>
+    </bpmndi:BPMNDiagram>
+</bpmn:definitions>
