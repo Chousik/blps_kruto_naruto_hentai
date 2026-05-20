@@ -38,23 +38,25 @@ class ExtraServiceWorkflowService(
     }
 
     fun acceptExtraService(extraServiceId: UUID, initiatedByUserId: UUID) {
-        camundaRestClient.correlateMessage(
-            messageName = MESSAGE_ACCEPTED,
-            businessKey = extraServiceId.toString(),
+        camundaRestClient.completeUserTaskByBusinessKey(
+            processBusinessKey = extraServiceId.toString(),
+            taskDefinitionKey = TASK_USER_DECIDE_PAYMENT,
             variables = mapOf(
                 "extraServiceId" to extraServiceId.toString(),
-                "initiatedByUserId" to initiatedByUserId.toString()
+                "initiatedByUserId" to initiatedByUserId.toString(),
+                "decision" to "ACCEPT"
             )
         )
     }
 
     fun rejectExtraService(extraServiceId: UUID, initiatedByUserId: UUID) {
-        camundaRestClient.correlateMessage(
-            messageName = MESSAGE_REJECTED,
-            businessKey = extraServiceId.toString(),
+        camundaRestClient.completeUserTaskByBusinessKey(
+            processBusinessKey = extraServiceId.toString(),
+            taskDefinitionKey = TASK_USER_DECIDE_PAYMENT,
             variables = mapOf(
                 "extraServiceId" to extraServiceId.toString(),
-                "initiatedByUserId" to initiatedByUserId.toString()
+                "initiatedByUserId" to initiatedByUserId.toString(),
+                "decision" to "REJECT"
             )
         )
     }
@@ -83,8 +85,7 @@ class ExtraServiceWorkflowService(
 
     companion object {
         const val PROCESS_KEY = "extra-service-process"
-        const val MESSAGE_ACCEPTED = "ExtraServiceAccepted"
-        const val MESSAGE_REJECTED = "ExtraServiceRejected"
+        const val TASK_USER_DECIDE_PAYMENT = "Task_user_decide_payment"
         const val MESSAGE_PAYMENT_LINK_ASSIGNED = "PaymentLinkAssigned"
         const val MESSAGE_PAYMENT_CREATION_FAILED = "PaymentCreationFailed"
     }

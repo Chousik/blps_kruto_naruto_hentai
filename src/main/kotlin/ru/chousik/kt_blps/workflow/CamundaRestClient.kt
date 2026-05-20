@@ -63,6 +63,38 @@ class CamundaRestClient(
             .toBodilessEntity()
     }
 
+    fun completeUserTaskByBusinessKey(
+        processBusinessKey: String,
+        taskDefinitionKey: String,
+        variables: Map<String, Any?> = emptyMap()
+    ) {
+        val response = client.get()
+            .uri { builder ->
+                builder.path("/task")
+                    .queryParam("processInstanceBusinessKey", processBusinessKey)
+                    .queryParam("taskDefinitionKey", taskDefinitionKey)
+                    .queryParam("active", true)
+                    .build()
+            }
+            .retrieve()
+            .body(String::class.java)
+            ?: "[]"
+
+        val tasks = objectMapper.readTree(response)
+        val taskIterator = tasks.elements()
+        val taskId = if (taskIterator.hasNext()) {
+            taskIterator.next()["id"].asText()
+        } else {
+            throw IllegalStateException("No active Camunda task '$taskDefinitionKey' for business key '$processBusinessKey'")
+        }
+
+        client.post()
+            .uri("/task/{id}/complete", taskId)
+            .body(mapOf("variables" to variables.toCamundaVariables()))
+            .retrieve()
+            .toBodilessEntity()
+    }
+
     fun fetchAndLock(workerId: String, topics: Collection<String>, maxTasks: Int, lockDurationMs: Long): List<ExternalTaskDto> {
         val response = client.post()
             .uri("/external-task/fetchAndLock")
